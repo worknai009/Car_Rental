@@ -280,7 +280,7 @@ router.get("/cars/filter", async (req, res) => {
 //     res.json({ message: "Car Booked Successfully", days: totalDays, price_per_day, total_amount });
 // });
 
-router.post("/bookings", auth, async (req, res) => {
+router.post("/bookings",async (req, res) => {
     const d = req.body;
     const user_id = req.user.id; // from JWT ✅
 

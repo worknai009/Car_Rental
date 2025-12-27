@@ -22,14 +22,11 @@
     "@mui/x-data-grid": "^8.23.0",
     "@nivo/bar": "^0.99.0",
     "@nivo/core": "^0.99.0",
-    "@nivo/geo": "^0.99.0",
+    "@nivo/geo": "^0.99.0",     
     "@nivo/line": "^0.99.0",
     "@nivo/pie": "^0.99.0",
-<<<<<<< HEAD
     "@tailwindcss/vite": "^4.1.18",
     "axios": "^1.13.2",
-=======
->>>>>>> 754ef080418092c9191f314cce22e96806e363cc
     "formik": "^2.4.9",
     "lucide-react": "^0.562.0",
     "react": "^19.2.3",
