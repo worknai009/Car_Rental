@@ -5,6 +5,21 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const sendOTP = require('../email');
 
+module.exports = (req, res, next) => {
+    const token = req.headers.authorization?.split(" ")[1];
+
+    if (!token)
+        return res.status(401).json({ message: "Login required" });
+
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        req.user = decoded; // { id, email }
+        next();
+    } catch (err) {
+        return res.status(401).json({ message: "Invalid token" });
+    }
+};
+
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{6,}$/;
 const JWT_SECRET = "worknai";
@@ -33,94 +48,148 @@ router.post("/register", async (req, res) => {
     res.json({ message: "User Registered Successfully" });
 });
 
-// User login
+// User login - send OTP
+
 // router.post("/login", async (req, res) => {
 //     const { email, password } = req.body;
-//     if (!email || !password) return res.status(400).json({ message: "Email & password required" });
-//     if (!emailRegex.test(email)) return res.status(400).json({ message: "Invalid email" });
+
+//     if (!email || !password)
+//         return res.status(400).json({ message: "Email & password required" });
 
 //     const data = await exe("SELECT * FROM users WHERE email=?", [email]);
-//     if (data.length === 0) return res.status(401).json({ message: "Invalid Credentials" });
+//     if (data.length === 0)
+//         return res.status(401).json({ message: "Invalid Credentials" });
 
 //     const user = data[0];
 //     const match = await bcrypt.compare(password, user.password);
-//     if (!match) return res.status(401).json({ message: "Invalid Credentials" });
+//     if (!match)
+//         return res.status(401).json({ message: "Invalid Credentials" });
 
-//     const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: "1d" });
-//     res.json({ message: "Login Successful", token, user: { id: user.id, name: user.name, email: user.email } });
+//     // Generate OTP
+//     const otp = Math.floor(100000 + Math.random() * 900000);
+//     const expiry = new Date(Date.now() + 5 * 60 * 1000); // 5 min
+
+//     // Save OTP
+//     await exe(
+//         "UPDATE users SET otp=?, otp_expiry=? WHERE id=?",
+//         [otp, expiry, user.id]
+//     );
+
+//     // Send OTP
+//     await sendOTP(user.email, otp);
+
+//     res.json({
+//         message: "OTP sent to your email",
+//         user_id: user.id
+//     });
+// });
+
+// router.post("/verify-otp", async (req, res) => {
+//     const { user_id, otp } = req.body;
+
+//     if (!user_id || !otp)
+//         return res.status(400).json({ message: "OTP required" });
+
+//     const data = await exe("SELECT * FROM users WHERE id=?", [user_id]);
+//     if (data.length === 0)
+//         return res.status(400).json({ message: "User not found" });
+
+//     const user = data[0];
+
+//     if (user.otp !== otp)
+//         return res.status(401).json({ message: "Invalid OTP" });
+
+//     if (new Date() > user.otp_expiry)
+//         return res.status(401).json({ message: "OTP expired" });
+
+//     // Clear OTP
+//     await exe("UPDATE users SET otp=NULL, otp_expiry=NULL WHERE id=?", [user_id]);
+
+//     // Generate JWT
+//     const token = jwt.sign(
+//         { id: user.id, email: user.email },
+//         JWT_SECRET,
+//         { expiresIn: "1d" }
+//     );
+
+//     res.json({
+//         message: "Login Successful",
+//         token,
+//         user: {
+//             id: user.id,
+//             name: user.name,
+//             email: user.email
+//         }
+//     });
 // });
 
 router.post("/login", async (req, res) => {
-    const { email, password } = req.body;
+  const { email, password } = req.body;
 
-    if (!email || !password)
-        return res.status(400).json({ message: "Email & password required" });
+  if (!email || !password)
+    return res.status(400).json({ message: "Email & password required" });
 
-    const data = await exe("SELECT * FROM users WHERE email=?", [email]);
-    if (data.length === 0)
-        return res.status(401).json({ message: "Invalid Credentials" });
+  const data = await exe("SELECT * FROM users WHERE email=?", [email]);
+  if (data.length === 0)
+    return res.status(401).json({ message: "Invalid Credentials" });
 
-    const user = data[0];
-    const match = await bcrypt.compare(password, user.password);
-    if (!match)
-        return res.status(401).json({ message: "Invalid Credentials" });
+  const user = data[0];
+  const match = await bcrypt.compare(password, user.password);
+  if (!match)
+    return res.status(401).json({ message: "Invalid Credentials" });
 
-    // Generate OTP
-    const otp = Math.floor(100000 + Math.random() * 900000);
-    const expiry = new Date(Date.now() + 5 * 60 * 1000); // 5 min
+  const otp = Math.floor(100000 + Math.random() * 900000);
+  const expiry = new Date(Date.now() + 5 * 60 * 1000);
 
-    // Save OTP
-    await exe(
-        "UPDATE users SET otp=?, otp_expiry=? WHERE id=?",
-        [otp, expiry, user.id]
-    );
+  await exe(
+    "UPDATE users SET otp=?, otp_expiry=? WHERE id=?",
+    [otp, expiry, user.id]
+  );
 
-    // Send OTP
-    await sendOTP(user.email, otp);
+  await sendOTP(user.email, otp);
 
-    res.json({
-        message: "OTP sent to your email",
-        user_id: user.id
-    });
+  res.json({
+    message: "OTP sent to your email",
+    user_id: user.id
+  });
 });
 
 router.post("/verify-otp", async (req, res) => {
-    const { user_id, otp } = req.body;
+  const { user_id, otp } = req.body;
 
-    if (!user_id || !otp)
-        return res.status(400).json({ message: "OTP required" });
+  if (!user_id || !otp)
+    return res.status(400).json({ message: "OTP required" });
 
-    const data = await exe("SELECT * FROM users WHERE id=?", [user_id]);
-    if (data.length === 0)
-        return res.status(400).json({ message: "User not found" });
+  const data = await exe("SELECT * FROM users WHERE id=?", [user_id]);
+  if (data.length === 0)
+    return res.status(400).json({ message: "User not found" });
 
-    const user = data[0];
+  const user = data[0];
 
-    if (user.otp !== otp)
-        return res.status(401).json({ message: "Invalid OTP" });
+  // ✅ FIX HERE
+  if (user.otp !== Number(otp))
+    return res.status(401).json({ message: "Invalid OTP" });
 
-    if (new Date() > user.otp_expiry)
-        return res.status(401).json({ message: "OTP expired" });
+  if (new Date() > user.otp_expiry)
+    return res.status(401).json({ message: "OTP expired" });
 
-    // Clear OTP
-    await exe("UPDATE users SET otp=NULL, otp_expiry=NULL WHERE id=?", [user_id]);
+  await exe("UPDATE users SET otp=NULL, otp_expiry=NULL WHERE id=?", [user_id]);
 
-    // Generate JWT
-    const token = jwt.sign(
-        { id: user.id, email: user.email },
-        JWT_SECRET,
-        { expiresIn: "1d" }
-    );
+  const token = jwt.sign(
+    { id: user.id, email: user.email },
+    JWT_SECRET,
+    { expiresIn: "1d" }
+  );
 
-    res.json({
-        message: "Login Successful",
-        token,
-        user: {
-            id: user.id,
-            name: user.name,
-            email: user.email
-        }
-    });
+  res.json({
+    message: "Login Successful",
+    token,
+    user: {
+      id: user.id,
+      name: user.name,
+      email: user.email
+    }
+  });
 });
 
 
@@ -191,24 +260,72 @@ router.get("/cars/filter", async (req, res) => {
 
 // ------------------- BOOKINGS -------------------
 
-router.post("/bookings", async (req, res) => {
+// router.post("/bookings", async (req, res) => {
+//     const d = req.body;
+//     const carData = await exe("SELECT price_per_day FROM cars WHERE id=?", [d.car_id]);
+//     if (!carData.length) return res.status(404).json({ message: "Car not found" });
+
+//     const price_per_day = carData[0].price_per_day;
+//     const fromDate = new Date(d.start_date);
+//     const toDate = new Date(d.end_date);
+//     if (toDate < fromDate) return res.status(400).json({ message: "Invalid date range" });
+
+//     const totalDays = Math.ceil((toDate - fromDate) / (1000 * 60 * 60 * 24)) + 1;
+//     const total_amount = totalDays * price_per_day;
+
+//     await exe("INSERT INTO bookings (user_id, car_id, pickup_location, drop_location, start_date, end_date, total_amount, status) VALUES (?,?,?,?,?,?)",
+//         [d.user_id, d.car_id, d.pickup_location, d.drop_location, d.start_date, d.end_date, total_amount, "Booked"]
+//     );
+
+//     res.json({ message: "Car Booked Successfully", days: totalDays, price_per_day, total_amount });
+// });
+
+router.post("/bookings", auth, async (req, res) => {
     const d = req.body;
-    const carData = await exe("SELECT price_per_day FROM cars WHERE id=?", [d.car_id]);
-    if (!carData.length) return res.status(404).json({ message: "Car not found" });
+    const user_id = req.user.id; // from JWT ✅
+
+    const carData = await exe(
+        "SELECT price_per_day FROM cars WHERE id=?",
+        [d.car_id]
+    );
+
+    if (!carData.length)
+        return res.status(404).json({ message: "Car not found" });
 
     const price_per_day = carData[0].price_per_day;
     const fromDate = new Date(d.start_date);
     const toDate = new Date(d.end_date);
-    if (toDate < fromDate) return res.status(400).json({ message: "Invalid date range" });
 
-    const totalDays = Math.ceil((toDate - fromDate) / (1000 * 60 * 60 * 24)) + 1;
+    if (toDate < fromDate)
+        return res.status(400).json({ message: "Invalid date range" });
+
+    const totalDays =
+        Math.ceil((toDate - fromDate) / (1000 * 60 * 60 * 24)) + 1;
+
     const total_amount = totalDays * price_per_day;
 
-    await exe("INSERT INTO bookings (user_id, car_id, pickup_location, drop_location, start_date, end_date, total_amount, status) VALUES (?,?,?,?,?,?)",
-        [d.user_id, d.car_id, d.pickup_location, d.drop_location, d.start_date, d.end_date, total_amount, "Booked"]
+    await exe(
+        `INSERT INTO bookings 
+        (user_id, car_id, pickup_location, drop_location, start_date, end_date, total_amount, status)
+        VALUES (?,?,?,?,?,?,?,?)`,
+        [
+            user_id,
+            d.car_id,
+            d.pickup_location,
+            d.drop_location,
+            d.start_date,
+            d.end_date,
+            total_amount,
+            "Booked"
+        ]
     );
 
-    res.json({ message: "Car Booked Successfully", days: totalDays, price_per_day, total_amount });
+    res.json({
+        message: "Car Booked Successfully",
+        days: totalDays,
+        price_per_day,
+        total_amount
+    });
 });
 
 // Check booking availability

@@ -1,30 +1,46 @@
 import React, { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Mail, Lock, User, Car } from 'lucide-react'
+import axios from 'axios'
+
+
+
 
 const Register = () => {
+
+  const navigate = useNavigate()
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    password: '',
-    confirmPassword: '',
+    password: ''
   })
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value })
   }
 
-  const handleSubmit = (e) => {
-    e.preventDefault()
+ const handleSubmit = async (e) => {
+  e.preventDefault()
 
-    if (formData.password !== formData.confirmPassword) {
-      alert('Passwords do not match')
-      return
-    }
+ 
 
-    console.log('Register Data:', formData)
-    // 🔜 Send to backend API
+  try {
+    const res = await axios.post(
+      'http://localhost:1000/register',
+      {
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+      }
+    )
+
+    alert(res.data.message)
+     navigate('/login')
+  } catch (error) {
+    alert(error.response?.data?.message || 'Registration failed')
   }
+}
+
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-500 to-red-700 px-4">
@@ -92,21 +108,7 @@ const Register = () => {
             </div>
           </div>
 
-          {/* Confirm Password */}
-          <div>
-            <label className="text-sm font-medium">Confirm Password</label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
-              <input
-                type="password"
-                name="confirmPassword"
-                required
-                onChange={handleChange}
-                className="w-full pl-10 py-2 border rounded focus:ring-2 focus:ring-red-500"
-                placeholder="********"
-              />
-            </div>
-          </div>
+        
 
           {/* Submit */}
           <button
