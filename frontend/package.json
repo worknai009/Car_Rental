@@ -25,8 +25,11 @@
     "@nivo/geo": "^0.99.0",
     "@nivo/line": "^0.99.0",
     "@nivo/pie": "^0.99.0",
+<<<<<<< HEAD
     "@tailwindcss/vite": "^4.1.18",
     "axios": "^1.13.2",
+=======
+>>>>>>> 754ef080418092c9191f314cce22e96806e363cc
     "formik": "^2.4.9",
     "lucide-react": "^0.562.0",
     "react": "^19.2.3",
@@ -38,17 +41,18 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
+    "@tailwindcss/vite": "^4.1.18",
     "@types/react": "^19.2.5",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
     "autoprefixer": "^10.4.23",
-    "eslint": "^9.39.1",
+    "eslint": "^9.39.2",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.18",
-    "vite": "npm:rolldown-vite@7.2.5"
+    "vite": "npm:rolldown-vite@^7.2.5"
   },
   "overrides": {
     "vite": "npm:rolldown-vite@7.2.5"
