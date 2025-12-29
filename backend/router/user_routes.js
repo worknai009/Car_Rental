@@ -145,7 +145,7 @@ router.post("/login", async (req, res) => {
     "UPDATE users SET otp=?, otp_expiry=? WHERE id=?",
     [otp, expiry, user.id]
   );
-
+ 
   await sendOTP(user.email, otp);
 
   res.json({
