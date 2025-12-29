@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Sidebar as ProSidebar, Menu, MenuItem } from "react-pro-sidebar";
 import { Link } from "react-router-dom";
-import { LayoutDashboard, Users, Receipt, Calendar, BarChart3, PieChart, Menu as MenuIcon } from "lucide-react";
+import { LayoutDashboard, Users, Receipt, Car, Calendar, BarChart3,  PieChart, Menu as MenuIcon } from "lucide-react";
 
 const Sidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -25,6 +25,12 @@ const Sidebar = () => {
         <p className="text-xs text-gray-500 px-6 py-2 uppercase">Charts</p>
         <MenuItem icon={<BarChart3 />} component={<Link to="/admin/bar" />}> Bar Chart </MenuItem>
         <MenuItem icon={<PieChart />} component={<Link to="/admin/pie" />}> Pie Chart </MenuItem>
+
+         <p className="text-xs text-gray-500 px-6 py-2 uppercase">Cars</p>
+        <MenuItem icon={<Car />} component={<Link to="/admin/cars" />}> Bar Chart </MenuItem>
+        
+        
+
       </Menu>
     </ProSidebar>
   );
