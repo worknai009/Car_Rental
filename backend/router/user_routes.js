@@ -4,6 +4,8 @@ const { exe } = require('../db');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const sendOTP = require('../email');
+const auth = require("../middleware/auth");
+
 
 module.exports = (req, res, next) => {
     const token = req.headers.authorization?.split(" ")[1];
@@ -48,81 +50,7 @@ router.post("/register", async (req, res) => {
     res.json({ message: "User Registered Successfully" });
 });
 
-// User login - send OTP
-
-// router.post("/login", async (req, res) => {
-//     const { email, password } = req.body;
-
-//     if (!email || !password)
-//         return res.status(400).json({ message: "Email & password required" });
-
-//     const data = await exe("SELECT * FROM users WHERE email=?", [email]);
-//     if (data.length === 0)
-//         return res.status(401).json({ message: "Invalid Credentials" });
-
-//     const user = data[0];
-//     const match = await bcrypt.compare(password, user.password);
-//     if (!match)
-//         return res.status(401).json({ message: "Invalid Credentials" });
-
-//     // Generate OTP
-//     const otp = Math.floor(100000 + Math.random() * 900000);
-//     const expiry = new Date(Date.now() + 5 * 60 * 1000); // 5 min
-
-//     // Save OTP
-//     await exe(
-//         "UPDATE users SET otp=?, otp_expiry=? WHERE id=?",
-//         [otp, expiry, user.id]
-//     );
-
-//     // Send OTP
-//     await sendOTP(user.email, otp);
-
-//     res.json({
-//         message: "OTP sent to your email",
-//         user_id: user.id
-//     });
-// });
-
-// router.post("/verify-otp", async (req, res) => {
-//     const { user_id, otp } = req.body;
-
-//     if (!user_id || !otp)
-//         return res.status(400).json({ message: "OTP required" });
-
-//     const data = await exe("SELECT * FROM users WHERE id=?", [user_id]);
-//     if (data.length === 0)
-//         return res.status(400).json({ message: "User not found" });
-
-//     const user = data[0];
-
-//     if (user.otp !== otp)
-//         return res.status(401).json({ message: "Invalid OTP" });
-
-//     if (new Date() > user.otp_expiry)
-//         return res.status(401).json({ message: "OTP expired" });
-
-//     // Clear OTP
-//     await exe("UPDATE users SET otp=NULL, otp_expiry=NULL WHERE id=?", [user_id]);
-
-//     // Generate JWT
-//     const token = jwt.sign(
-//         { id: user.id, email: user.email },
-//         JWT_SECRET,
-//         { expiresIn: "1d" }
-//     );
-
-//     res.json({
-//         message: "Login Successful",
-//         token,
-//         user: {
-//             id: user.id,
-//             name: user.name,
-//             email: user.email
-//         }
-//     });
-// });
-
+// User login with OTP
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
@@ -232,9 +160,13 @@ router.get("/categories", async (req, res) => {
 });
 
 router.get("/cars", async (req, res) => {
-    const sql = `SELECT * FROM cars`;
-    const data = await exe(sql);
-    res.json(data);
+  const sql = `
+    SELECT c.*, cat.name AS category_name
+    FROM cars c
+    LEFT JOIN categories cat ON c.category_id = cat.id
+  `;
+  const data = await exe(sql);
+  res.json(data);
 });
 
 router.get("/card/:id", async (req, res) => {
@@ -280,53 +212,115 @@ router.get("/cars/filter", async (req, res) => {
 //     res.json({ message: "Car Booked Successfully", days: totalDays, price_per_day, total_amount });
 // });
 
-router.post("/bookings",async (req, res) => {
+router.post("/bookings", auth, async (req, res) => {
+  try {
     const d = req.body;
-    const user_id = req.user.id; // from JWT ✅
+    const user_id = req.user.id;
 
     const carData = await exe(
-        "SELECT price_per_day FROM cars WHERE id=?",
-        [d.car_id]
+      "SELECT price_per_day FROM cars WHERE id=?",
+      [d.car_id]
     );
 
     if (!carData.length)
-        return res.status(404).json({ message: "Car not found" });
+      return res.status(404).json({ message: "Car not found" });
 
     const price_per_day = carData[0].price_per_day;
+
     const fromDate = new Date(d.start_date);
     const toDate = new Date(d.end_date);
 
     if (toDate < fromDate)
-        return res.status(400).json({ message: "Invalid date range" });
+      return res.status(400).json({ message: "Invalid date range" });
 
-    const totalDays =
-        Math.ceil((toDate - fromDate) / (1000 * 60 * 60 * 24)) + 1;
+    const days =
+      Math.ceil((toDate - fromDate) / (1000 * 60 * 60 * 24)) + 1;
 
-    const total_amount = totalDays * price_per_day;
+    const total_amount = days * price_per_day;
 
     await exe(
-        `INSERT INTO bookings 
-        (user_id, car_id, pickup_location, drop_location, start_date, end_date, total_amount, status)
-        VALUES (?,?,?,?,?,?,?,?)`,
-        [
-            user_id,
-            d.car_id,
-            d.pickup_location,
-            d.drop_location,
-            d.start_date,
-            d.end_date,
-            total_amount,
-            "Booked"
-        ]
+      `INSERT INTO bookings
+      (user_id, car_id, pickup_location, drop_location, start_date, end_date, total_amount, status)
+      VALUES (?,?,?,?,?,?,?,?)`,
+      [
+        user_id,
+        d.car_id,
+        d.pickup_location,
+        d.drop_location,
+        d.start_date,
+        d.end_date,
+        total_amount,
+        "Booked",
+      ]
     );
 
     res.json({
-        message: "Car Booked Successfully",
-        days: totalDays,
-        price_per_day,
-        total_amount
+      message: "Booking Successful",
+      days,
+      total_amount,
     });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Booking failed" });
+  }
 });
+
+
+router.get("/mybookings", auth, async (req, res) => {
+  try {
+    const user_id = req.user.id;
+
+    const data = await exe(
+      `SELECT 
+        b.id,
+        b.pickup_location,
+        b.drop_location,
+        b.start_date,
+        b.end_date,
+        b.total_amount,
+        b.status,
+        c.name AS car_name,
+        c.cars_image
+       FROM bookings b
+       JOIN cars c ON b.car_id = c.id
+       WHERE b.user_id = ?
+       ORDER BY b.id DESC`,
+      [user_id]
+    );
+
+    res.json(data);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to load bookings" });
+  }
+});
+
+router.get("/cars/available", async (req, res) => {
+  const { start_date, end_date } = req.query;
+
+  if (!start_date || !end_date) {
+    return res.status(400).json({ message: "Dates required" });
+  }
+
+  const cars = await exe(
+    `SELECT * FROM cars
+     WHERE is_available = 1
+     AND id NOT IN (
+       SELECT car_id FROM bookings
+       WHERE start_date <= ? AND end_date >= ?
+     )`,
+    [end_date, start_date]
+  );
+
+  res.json(cars);
+});
+
+router.get("/cars/:id", async (req, res) => {
+  const car = await exe("SELECT * FROM cars WHERE id=?", [req.params.id]);
+  if (!car.length) return res.status(404).json({ message: "Car not found" });
+  res.json(car[0]);
+});
+
 
 // Check booking availability
 router.post("/bookings/check", async (req, res) => {
@@ -345,6 +339,32 @@ router.get("/bookings/user/:user_id", async (req, res) => {
     res.json(data);
 });
 
+router.get("/bookings/:id/invoice", async (req, res) => {
+  const id = req.params.id;
+
+  const sql = `
+    SELECT 
+      b.id as booking_id,
+      b.start_date,
+      b.end_date,
+      b.pickup_location,
+      b.drop_location,
+      b.total_amount,
+      b.status,
+      u.name as user_name,
+      u.email as user_email,
+      c.name as car_name,
+      c.cars_image as car_image
+    FROM bookings b
+    JOIN users u ON b.user_id = u.id
+    JOIN cars c ON b.car_id = c.id
+    WHERE b.id = ?
+  `;
+
+  const data = await exe(sql, [id]);
+  res.json(data[0]);
+});
+
 
 // Cancel booking
 router.put("/bookings/cancel/:id", async (req, res) => {
@@ -353,7 +373,7 @@ router.put("/bookings/cancel/:id", async (req, res) => {
     res.json({ message: "Booking Cancelled Successfully" });
 });
 
-router.get("/bookings/:id/invoice", async (req, res) => {
+router.get("/bookings/:id/invoice",auth, async (req, res) => {
     const id = req.params.id;
     const sql = `SELECT 
             b.id as booking_id,
@@ -370,7 +390,7 @@ router.get("/bookings/:id/invoice", async (req, res) => {
         FROM bookings b
         JOIN users u ON b.user_id=u.id
         JOIN cars c ON b.car_id=c.id
-        WHERE b.id=?
+        WHERE b.id = ? AND b.user_id = ?
     `;
     const data = await exe(sql, [id]);
     res.json(data[0]);

@@ -3,6 +3,9 @@ const router=express.Router();
 const {conn,exe}=require('../db');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const multer = require('multer');
+const path=require('path');
+
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{6,}$/;
@@ -50,10 +53,22 @@ router.get("/users",async (req,res)=>{
 })
 
 router.delete("/users/:id", async (req, res) => {
+  try {
     const id = req.params.id;
-    await exe("DELETE FROM users WHERE id=?", [id]);
+    const result = await exe(
+      "DELETE FROM users WHERE id = ?",
+      [id]
+    );
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "User not found" });
+    }
     res.json({ message: "User Deleted Successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Delete failed" });
+  }
 });
+
 
 router.get("/reports/revenue", async (req, res) => {
     const sql = "SELECT SUM(total_amount) as total_revenue FROM bookings WHERE status='paid'";
@@ -63,13 +78,27 @@ router.get("/reports/revenue", async (req, res) => {
 
 // Categories routes
 
-router.post("/categories",async (req, res)=>{
-    const d=req.body;
-    const sql=`insert into categories (name) values (?)`;
-    const data=await exe(sql, [d.name]);
-     res.json({ message: "Category Added Successfully" });
-    res.json(data);
+router.post("/categories", async (req, res) => {
+  try {
+    const { name } = req.body;
+
+    if (!name) {
+      return res.status(400).json({ message: "Category name is required" });
+    }
+
+    const sql = `INSERT INTO categories (name) VALUES (?)`;
+    const data = await exe(sql, [name]);
+
+    res.json({
+      message: "Category Added Successfully",
+      category_id: data.insertId
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Failed to add category" });
+  }
 });
+
 
 router.get("/categories",async (req,res)=>{
     const sql=`select * from categories`;
@@ -104,45 +133,112 @@ router.delete("/categories/:id", async (req, res) => {
 
 // Cars infomation routes
 
-router.get("/cars",async (req,res)=>{
-    const sql=`select * from cars`;
-    const data=await exe(sql);
+router.get("/cars", async (req, res) => {
+  try {
+    const sql = "SELECT * FROM cars";
+    const data = await exe(sql);
     res.json(data);
+  } catch (error) {
+    console.error("Fetch Cars Error:", error);
+    res.status(500).json({ message: "Failed to fetch cars", error: error.message });
+  }
 });
 
-router.post("/cars",async (req, res)=>{
-    
-    var cars_image="";
-    if(req.files){
-        if(req.files.car_image){
-            cars_image=new Date().getTime()+req.files.car_image.name;
-            req.files.car_image.mv("public/"+cars_image);
-        }
+router.post("/cars", async (req, res) => {
+  try {
+    if (!req.files || !req.files.cars_image) {
+      return res.status(400).json({ message: "Car image is required" });
     }
-    const d=req.body;
-    const sql=`insert into cars (name,brand,cars_image,category_id,price_per_day,is_available) values (?,?,?,?,?)`;
-    const data=await exe(sql,[d.name,d.brand,cars_image,d.category_id,d.price_per_day,d.is_available]);
-    res.json(data);
+
+    const file = req.files.cars_image;
+    const cars_image = Date.now() + "_" + file.name;
+    await file.mv("public/" + cars_image);
+
+    const { name, brand, car_details, category_id, price_per_day, is_available } = req.body;
+
+    if (!name || !brand || !category_id || !price_per_day) {
+      return res.status(400).json({ message: "All required fields must be filled" });
+    }
+
+    const sql = `
+      INSERT INTO cars
+      (name, brand, car_details, cars_image, category_id, price_per_day, is_available, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+    `;
+
+    const data = await exe(sql, [
+      name,
+      brand,
+      car_details || "",
+      cars_image,
+      category_id,
+      price_per_day,
+      is_available || 1
+    ]);
+
+    res.json({ message: "Car Added Successfully", id: data.insertId, cars_image });
+  } catch (error) {
+    console.error("Backend Error:", error);
+    res.status(500).json({ message: "Failed to add car", error: error.message });
+  }
 });
+
 
 router.put("/cars/:id", async (req, res) => {
+  try {
+    const id = req.params.id;
 
-        const id = req.params.id;
-        const d = req.body;
-        let cars_image = d.cars_image;
+    // If the request has files (image)
+    let cars_image = "";
+    if (req.files && req.files.cars_image) {
+      const file = req.files.cars_image;
+      cars_image = Date.now() + "_" + file.name;
+      await file.mv("public/" + cars_image);
+    }
 
-        const sql = `UPDATE cars SET name=?,brand=?,cars_image=?, category_id=?, price_per_day=?, is_available=? WHERE id=?`;
-        await exe(sql, [d.name,d.brand,cars_image,d.category_id,d.price_per_day,d.is_available,id]);
+    // Destructure form data
+    const { name, brand, car_details, category_id, price_per_day, is_available } = req.body;
 
-        res.json({ message: "Car Updated Successfully" });
+    // If no new image uploaded, keep old image
+    if (!cars_image) {
+      const oldCar = await exe("SELECT cars_image FROM cars WHERE id=?", [id]);
+      cars_image = oldCar[0]?.cars_image || "";
+    }
+
+    const sql = `
+      UPDATE cars 
+      SET name=?, brand=?, car_details=?, cars_image=?, category_id=?, price_per_day=?, is_available=?
+      WHERE id=?
+    `;
+    await exe(sql, [name, brand, car_details, cars_image, category_id, price_per_day, is_available, id]);
+
+    res.json({ message: "Car Updated Successfully", cars_image });
+  } catch (error) {
+    console.error("Failed to update car:", error);
+    res.status(500).json({ message: "Failed to update car", error: error.message });
+  }
 });
+
 
 router.delete("/cars/:id", async (req, res) => {
-    const id=req.params.id;
-    const sql=`delete from cars where id=?`;
-    const data=await exe(sql,[id]);
-    res.json({message:"Car Deleted Successfully"});
+  try {
+    const id = req.params.id;
+
+    // Check if car exists
+    const car = await exe("SELECT * FROM cars WHERE id=?", [id]);
+    if (car.length === 0) {
+      return res.status(404).json({ message: "Car not found" });
+    }
+
+    // Delete the car
+    await exe("DELETE FROM cars WHERE id=?", [id]);
+    res.json({ message: "Car Deleted Successfully" });
+  } catch (error) {
+    console.error("Delete Car Error:", error); // <-- log full error
+    res.status(500).json({ message: "Failed to delete car", error: error.message });
+  }
 });
+
 
 router.put("/cars/:id/availability", async (req, res) => {
     const id = req.params.id;
@@ -176,12 +272,64 @@ router.put("/bookings/:id/reject", async (req, res) => {
 });
 
 // Invoice route
-router.get("/bookings/:id/invoice",async (req,res)=>{
-    const id=req.params.id;
-    const sql=`select b.id as booking_id,b.pickup_location,b.drop_location,b.start_date,b.end_date,b.total_amount,b.status,u.name as user_name,u.email as user_email,c.name as car_name,c.cars_image as car_image from bookings b join users u on b.user_id=u.id join cars c on b.car_id=c.id where b.id=?`;
-    const data=await exe(sql,[id]);
+router.get("/bookings/:id/invoice", async (req, res) => {
+  try {
+    const id = req.params.id;
+    const sql = `
+      SELECT 
+        b.id as booking_id,
+        u.name as user_name,
+        u.email as user_email,
+        u.phone,
+        c.name as car_name,
+        c.cars_image as car_image,
+        b.total_amount,
+        b.start_date,
+        b.end_date,
+        b.pickup_location,
+        b.drop_location,
+        b.status
+      FROM bookings b
+      JOIN users u ON b.user_id = u.id
+      JOIN cars c ON b.car_id = c.id
+      WHERE b.id = ?
+    `;
+    const data = await exe(sql, [id]);
+    if (!data.length) return res.status(404).json({ message: "Booking not found" });
     res.json(data[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
 });
+
+
+// GET all bookings
+router.get("/bookings", async (req, res) => {
+  try {
+    const sql = `
+      SELECT 
+        b.id,
+        b.start_date,
+        b.end_date,
+        b.total_amount,
+        b.status,
+        u.name as user_name,
+        u.email as user_email,
+        c.name as car_name
+      FROM bookings b
+      JOIN users u ON b.user_id = u.id
+      JOIN cars c ON b.car_id = c.id
+      ORDER BY b.id DESC
+    `;
+    const data = await exe(sql);
+    res.json(data);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to fetch bookings" });
+  }
+});
+
 
 // feebbacks routes
 router.get("/feedbacks",async (req,res)=>{
@@ -198,35 +346,107 @@ router.get("/contacts",async (req,res)=>{
     res.json(data);
 });
 
-// analyze routes
 
-router.get("/analytics", async (req, res) => {
-  const sql = `
-    SELECT DATE(created_at) as date, COUNT(*) as total
-    FROM users
-    GROUP BY DATE(created_at)
-    ORDER BY DATE(created_at)
-  `;
-  const data = await exe(sql);
-  res.json(data);
+
+
+
+// GET single booking invoice
+router.get("/bookings/:id/invoice", async (req, res) => {
+  try {
+    const id = req.params.id;
+
+    const sql = `
+      SELECT 
+        b.id as booking_id,
+        b.pickup_location,
+        b.drop_location,
+        b.start_date,
+        b.end_date,
+        b.total_amount,
+        b.status,
+        u.name as user_name,
+        u.email as user_email,
+        u.phone as user_phone,
+        c.name as car_name,
+        c.cars_image as car_image
+      FROM bookings b
+      JOIN users u ON b.user_id = u.id
+      JOIN cars c ON b.car_id = c.id
+      WHERE b.id = ?
+    `;
+
+    const data = await exe(sql, [id]);
+
+    if (!data.length) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+
+    res.json(data[0]); // return single invoice object
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
 });
 
-router.get("/dashboard/summary", async (req, res) => {
-  const totalCars = await exe("SELECT COUNT(*) as total FROM cars");
-  const bookedCars = await exe(
-    "SELECT COUNT(DISTINCT car_id) as total FROM bookings WHERE status='booked'"
-  );
-  const totalUsers = await exe("SELECT COUNT(*) as total FROM users");
-  const totalReviews = await exe("SELECT COUNT(*) as total FROM feedbacks");
 
-  res.json({
-    totalCars: totalCars[0].total,
-    bookedCars: bookedCars[0].total,
-    totalUsers: totalUsers[0].total,
-    totalReviews: totalReviews[0].total
-  });
+router.get("/bar", async (req, res) => {
+  try {
+    const sql = `
+      SELECT 
+        DATE_FORMAT(b.start_date, '%b') AS month,
+        c.category AS category,
+        SUM(b.total_amount) AS revenue
+      FROM bookings b
+      JOIN cars c ON b.car_id = c.id
+      GROUP BY month, category
+      ORDER BY MIN(b.start_date)
+    `;
+
+    const rows = await exe(sql);
+
+    // Convert SQL rows → Nivo format
+    const chartData = {};
+    const keysSet = new Set();
+
+    rows.forEach(r => {
+      keysSet.add(r.category);
+
+      if (!chartData[r.month]) {
+        chartData[r.month] = { month: r.month };
+      }
+
+      chartData[r.month][r.category] = Number(r.revenue);
+    });
+
+    res.json({
+      data: Object.values(chartData),
+      keys: Array.from(keysSet)
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Bar chart error" });
+  }
 });
 
+// adminRoutes.js
+router.get("/dashboard", async (req, res) => {
+  try {
+    const revenue = await exe("SELECT SUM(total_amount) AS total FROM bookings");
+    const bookings = await exe("SELECT COUNT(*) AS total FROM bookings");
+    const users = await exe("SELECT COUNT(*) AS total FROM users");
+    const cars = await exe("SELECT COUNT(*) AS total FROM cars");
+
+    res.json({
+      totalRevenue: revenue[0].total || 0,
+      bookingCount: bookings[0].total || 0,
+      users: users[0].total || 0,
+      cars: cars[0].total || 0
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Dashboard error" });
+  }
+});
 
 
 

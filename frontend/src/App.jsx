@@ -15,20 +15,27 @@ import Contact from "./pages/Contact";
 
 // ADMIN PAGES
 import Dashboard from "./pages/admin/Dashboard";
-import Team from "./pages/admin/Team";
-import Invoices from "./pages/admin/Invoices";
+import Users from "./pages/admin/Users";
+import Invoice from "./pages/admin/charts/Invoice";
+import AddCar from "./pages/admin/charts/AddCar";
+import CreateCategory from "./pages/admin/charts/CreateCategory";
+import CarList from "./pages/admin/charts/CarList";
+import EditCar from "./pages/admin/charts/EditCar";
+import MyBookings from "./pages/admin/charts/MyBooking";
+import Booking from "./pages/admin/charts/Booking";
 import Calendar from "./pages/admin/Calendar";
-
-// ADMIN – CAR MANAGEMENT
-import CarList from "./components/admin/cars/CarList";
-import AddCar from "./components/admin/cars/AddCar";
-import EditCar from "./components/admin/cars/EditCar";
+import AdminBookings from "./pages/admin/charts/AdminBookings";
+import AdminPrivateRoute from "./pages/admin/charts/AdminPrivateRoute";
 
 // CHART PAGES
 import Bar from "./pages/admin/charts/Bar";
 import Geography from "./pages/admin/charts/Geography";
 import Line from "./pages/admin/charts/Line";
 import Pie from "./pages/admin/charts/Pie";
+
+// ADMIN AUTH
+import AdminLogin from "./pages/admin/charts/AdminLogin";
+import AdminRegister from "./pages/admin/charts/AdminRegister";
 
 const App = () => {
   return (
@@ -41,28 +48,32 @@ const App = () => {
         <Route path="/cars" element={<Car />} />
         <Route path="/about" element={<About />} />
         <Route path="/contact" element={<Contact />} />
+        <Route path="/booking" element={<Booking />} />
+        <Route path="/mybooking" element={<MyBookings />} />
+        <Route path="/invoice/:id" element={<Invoice />} />
       </Route>
 
+      {/* ================= ADMIN AUTH ================= */}
+      <Route path="/admin/login" element={<AdminLogin />} />
+      <Route path="/admin/register" element={<AdminRegister />} />
+
       {/* ================= ADMIN ROUTES ================= */}
-      <Route path="/admin" element={<AdminLayout />}>
-        {/* Dashboard */}
-        <Route index element={<Dashboard />} />
-
-        {/* Management */}
-        <Route path="team" element={<Team />} />
-        <Route path="invoices" element={<Invoices />} />
-        <Route path="calendar" element={<Calendar />} />
-
-        {/* Cars CRUD */}
-        <Route path="cars" element={<CarList />} />
-        <Route path="cars/add" element={<AddCar />} />
-        <Route path="cars/edit/:id" element={<EditCar />} />
-
-        {/* Charts */}
-        <Route path="bar" element={<Bar />} />
-        <Route path="geography" element={<Geography />} />
-        <Route path="line" element={<Line />} />
-        <Route path="pie" element={<Pie />} />
+      <Route path="/admin/*" element={<AdminPrivateRoute />}>
+        <Route element={<AdminLayout />}>
+          <Route index element={<Dashboard />} /> {/* /admin -> dashboard */}
+          <Route path="users" element={<Users />} />
+          <Route path="addcar" element={<AddCar />} />
+          <Route path="bookings" element={<AdminBookings />} />
+          <Route path="invoice/:id" element={<Invoice />} />
+          <Route path="createcategory" element={<CreateCategory />} />
+          <Route path="carlist" element={<CarList />} />
+          <Route path="editcar/:id" element={<EditCar />} />
+          <Route path="calendar" element={<Calendar />} />
+          <Route path="bar" element={<Bar />} />
+          <Route path="geography" element={<Geography />} />
+          <Route path="line" element={<Line />} />
+          <Route path="pie" element={<Pie />} />
+        </Route>
       </Route>
 
       {/* ================= 404 ================= */}
