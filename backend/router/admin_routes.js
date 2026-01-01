@@ -489,13 +489,52 @@ router.get("/dashboard", async (req, res) => {
     res.json({
       totalRevenue: revenue[0].total || 0,
       bookingCount: bookings[0].total || 0,
-      users: users[0].total || 0,
-      cars: cars[0].total || 0
+      activeClients: users[0].total || 0,
+      fleetMileage: cars[0].total || 0 // or rename label to "Total Cars"
     });
   } catch (err) {
     res.status(500).json({ message: "Dashboard error" });
   }
 });
+
+// adminRoutes.js
+
+router.get("/contact", async (req, res) => {
+  try {
+    const contacts = await exe(`
+      SELECT id, name, email, subject, message
+      FROM contact
+      ORDER BY id DESC
+    `);
+
+    // Ensure each row has an 'id' for DataGrid
+    const formatted = contacts.map(c => ({
+      id: c.id.toString(), // DataGrid requires string or number
+      name: c.name,
+      email: c.email,
+      subject: c.subject,
+      message: c.message
+    }));
+
+    res.json(formatted);
+  } catch (err) {
+    console.error("Contact fetch error:", err);
+    res.status(500).json({ message: "Failed to fetch contact messages" });
+  }
+});
+
+// Delete a contact message
+router.delete("/contact/:id", async (req, res) => {
+  try {
+    const id = req.params.id;
+    await exe("DELETE FROM contact WHERE id = ?", [id]);
+    res.json({ message: "Contact message deleted successfully" });
+  } catch (err) {
+    console.error("Delete contact error:", err);
+    res.status(500).json({ message: "Failed to delete contact message" });
+  }
+});
+
 
 
 

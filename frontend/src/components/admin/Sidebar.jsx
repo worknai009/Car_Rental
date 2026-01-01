@@ -51,6 +51,9 @@ const Sidebar = () => {
         <MenuItem icon={<Receipt />} component={<Link to="/admin/bookings" />}>
           Bookings
         </MenuItem>
+          <MenuItem icon={<Users />} component={<Link to="/admin/contactlist" />}>
+          Contact List
+                  </MenuItem>
 
         <p className="text-xs text-gray-500 px-6 py-2 uppercase">Charts</p>
         <MenuItem icon={<BarChart3 />} component={<Link to="/admin/bar" />}>

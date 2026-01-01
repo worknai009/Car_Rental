@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react'
 import ScrollReveal from 'scrollreveal'
+import { Link } from 'react-router-dom'
 import {
   MapPin,
   Phone,
@@ -19,16 +20,10 @@ const Footer = () => {
       easing: 'ease-in-out',
     })
 
-    // Columns animation
     sr.reveal('.footer-col-1', { origin: 'left' })
     sr.reveal('.footer-col-2', { origin: 'bottom', delay: 150 })
     sr.reveal('.footer-col-3', { origin: 'right', delay: 300 })
-
-    // Bottom bar animation
-    sr.reveal('.footer-bottom', {
-      origin: 'bottom',
-      delay: 400,
-    })
+    sr.reveal('.footer-bottom', { origin: 'bottom', delay: 400 })
   }, [])
 
   return (
@@ -65,20 +60,38 @@ const Footer = () => {
         <div className="footer-col-2">
           <h4 className="text-xl font-semibold mb-4">Quick Links</h4>
           <ul className="space-y-2">
-            <li className="hover:text-red-600 cursor-pointer transition">
-              Home
+            <li>
+              <Link
+                to="/"
+                className="hover:text-red-600 transition"
+              >
+                Home
+              </Link>
             </li>
-            <li className="hover:text-red-600 cursor-pointer transition">
-              About Us
+            <li>
+              <Link
+                to="/about"
+                className="hover:text-red-600 transition"
+              >
+                About Us
+              </Link>
             </li>
-            <li className="hover:text-red-600 cursor-pointer transition">
-              Services
+         
+            <li>
+              <Link
+                to="/cars"
+                className="hover:text-red-600 transition"
+              >
+                Cars
+              </Link>
             </li>
-            <li className="hover:text-red-600 cursor-pointer transition">
-              Cars
-            </li>
-            <li className="hover:text-red-600 cursor-pointer transition">
-              Contact
+            <li>
+              <Link
+                to="/contact"
+                className="hover:text-red-600 transition"
+              >
+                Contact
+              </Link>
             </li>
           </ul>
         </div>

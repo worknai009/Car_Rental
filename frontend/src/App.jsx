@@ -27,6 +27,7 @@ import Calendar from "./pages/admin/Calendar";
 import AdminBookings from "./pages/admin/charts/AdminBookings";
 import AdminPrivateRoute from "./pages/admin/charts/AdminPrivateRoute";
 import AdminLogout from "./pages/admin/charts/AdminLogout";
+import Contacts from "./pages/admin/charts/Contacts";
 
 // CHART PAGES
 import Bar from "./pages/admin/charts/Bar";
@@ -75,6 +76,7 @@ const App = () => {
           <Route path="line" element={<Line />} />
           <Route path="pie" element={<Pie />} />
           <Route path="logout" element={<AdminLogout />} />
+          <Route path="contactlist" element={<Contacts />} />"
         </Route>
       </Route>
 

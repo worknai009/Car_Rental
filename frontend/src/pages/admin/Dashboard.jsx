@@ -31,21 +31,21 @@ const fetchDashboard = async () => {
         <Box gridColumn="span 3">
           <StatBox
             title={`₹${data.totalRevenue}`}
-            subtitle="Monthly Revenue"
+            subtitle="Revenue"
             icon={<IndianRupee size={26} />}
           />
         </Box>
         <Box gridColumn="span 3">
           <StatBox
             title={data.bookingCount}
-            subtitle="New Bookings"
+            subtitle="Bookings"
             icon={<ShoppingCart size={26} />}
           />
         </Box>
         <Box gridColumn="span 3">
           <StatBox
             title={data.fleetMileage}
-            subtitle="Fleet Mileage"
+            subtitle="Totoal Cars"
             icon={<Car size={26} />}
           />
         </Box>

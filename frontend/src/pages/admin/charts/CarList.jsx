@@ -81,6 +81,10 @@ const CarList = () => {
                                     height="180"
                                     image={`http://localhost:1000/${car.cars_image}`}
                                     alt={car.name}
+                                      sx={{
+    objectFit: "cover",   // 🔥 fixes alignment issue
+    width: "100%",
+  }}
                                 />
                             )}
                             <CardContent>

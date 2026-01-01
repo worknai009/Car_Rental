@@ -406,19 +406,27 @@ router.post("/bookings/:id/pay", async (req, res) => {
 
 // ------------------- FEEDBACK -------------------
 
-router.post("/feedback", async (req, res) => {
-    const d = req.body;
-    await exe("INSERT INTO feedback(user_id,message,rating) VALUES(?,?,?)", [d.user_id, d.message, d.rating]);
-    res.json({ message: "Feedback Submitted Successfully" });
+// Add this in your routes file (after importing auth middleware)
+router.post("/feedback", auth, async (req, res) => {
+  const { message, rating, booking_id } = req.body;
+  const user_id = req.user.id; // logged-in user
+
+  if (!message || !rating || !booking_id) {
+    return res.status(400).json({ message: "All fields required" });
+  }
+
+  try {
+    await exe(
+      "INSERT INTO feedback(user_id, booking_id, message, rating) VALUES (?, ?, ?, ?)",
+      [user_id, booking_id, message, rating]
+    );
+    res.json({ message: "Feedback submitted successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to submit feedback" });
+  }
 });
 
-
-// Get user feedback
-router.get("/feedback/user/:user_id", async (req, res) => {
-    const user_id = req.params.user_id;
-    const data = await exe("SELECT * FROM feedback WHERE user_id=?", [user_id]);
-    res.json(data);
-});
 
 // Get car reviews
 router.get("/cars/:id/reviews", async (req, res) => {
@@ -435,9 +443,17 @@ router.get("/cars/:id/reviews", async (req, res) => {
 // ------------------- CONTACT -------------------
 
 router.post("/contact", async (req, res) => {
-    const d = req.body;
-    await exe("INSERT INTO contact(user_id,name,email,subject,message) VALUES(?,?,?,?,?)", [d.user_id, d.name, d.email, d.subject, d.message]);
+
+    const { name, email, subject, message } = req.body;
+
+    await exe(
+        "INSERT INTO contact(name,email,subject,message) VALUES(?,?,?,?)",
+        [name, email, subject, message]
+    );
+
     res.json({ message: "Contact Message Sent Successfully" });
 });
+
+
 
 module.exports = router;
