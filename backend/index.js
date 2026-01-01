@@ -3,8 +3,8 @@ const bodyParser = require('body-parser');
 const dotenv = require('dotenv');
 dotenv.config();
 
-const user_routes=require('./router/user_routes');
-const admin_routes=require('./router/admin_routes');
+const user_routes=require('./Controller/user_routes');
+const admin_routes=require('./Controller/admin_routes');
 const cors = require('cors');
 const fileUpload = require('express-fileupload');
 const multer = require('multer');
