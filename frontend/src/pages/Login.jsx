@@ -73,7 +73,7 @@ const Login = () => {
       {/* Logo */}
       <div className='text-center mb-6 login-reveal'>
         <div className='text-white text-3xl font-bold flex justify-center items-center gap-2'>
-          <Car className='w-10 h-10' /> <span>AutoRent</span>
+          <Car className='w-10 h-10' /> <span>CarRent</span>
         </div>
       </div>
 

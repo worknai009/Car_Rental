@@ -13,11 +13,11 @@ const Pie = () => {
 
   const fetchPieData = async () => {
     try {
-      const token = localStorage.getItem("adminToken");
-      const res = await axios.get(
-        "http://localhost:1000/admin/pie",
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const res = await axios.get("http://localhost:1000/admin/pie");
+
+      console.log("Pie API data:", res.data);
+
+      // ✅ BACKEND ALREADY RETURNS CORRECT FORMAT
       setData(res.data);
     } catch (err) {
       console.error("Pie chart error", err);
@@ -33,30 +33,36 @@ const Pie = () => {
         sx={{ backgroundColor: "white", p: "20px", borderRadius: "8px" }}
         className="shadow-sm"
       >
-        <ResponsivePie
-          data={data}
-          margin={{ top: 40, right: 80, bottom: 80, left: 80 }}
-          innerRadius={0.5}
-          padAngle={0.7}
-          cornerRadius={3}
-          activeOuterRadiusOffset={8}
-          borderWidth={1}
-          borderColor={{ from: "color", modifiers: [["darker", 0.2]] }}
-          arcLabelsSkipAngle={10}
-          arcLabelsTextColor={{ from: "color", modifiers: [["darker", 2]] }}
-          colors={["#dc2626", "#111827", "#4b5563", "#9ca3af"]}
-          legends={[
-            {
-              anchor: "bottom",
-              direction: "row",
-              translateY: 56,
-              itemWidth: 100,
-              itemHeight: 18,
-              symbolSize: 18,
-              symbolShape: "circle",
-            },
-          ]}
-        />
+        {data.length > 0 ? (
+          <ResponsivePie
+            data={data}
+            margin={{ top: 40, right: 80, bottom: 80, left: 80 }}
+            innerRadius={0.5}
+            padAngle={0.7}
+            cornerRadius={3}
+            activeOuterRadiusOffset={8}
+            borderWidth={1}
+            borderColor={{ from: "color", modifiers: [["darker", 0.2]] }}
+            arcLabelsSkipAngle={10}
+            arcLabelsTextColor={{ from: "color", modifiers: [["darker", 2]] }}
+            colors={["#dc2626", "#111827", "#4b5563", "#9ca3af"]}
+            legends={[
+              {
+                anchor: "bottom",
+                direction: "row",
+                translateY: 56,
+                itemWidth: 100,
+                itemHeight: 18,
+                symbolSize: 18,
+                symbolShape: "circle",
+              },
+            ]}
+          />
+        ) : (
+          <p className="text-center text-gray-500 mt-20">
+            No data available
+          </p>
+        )}
       </Box>
     </Box>
   );

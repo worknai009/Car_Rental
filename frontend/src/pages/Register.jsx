@@ -50,7 +50,7 @@ const Register = () => {
         {/* Logo */}
         <div className="flex justify-center items-center gap-2 mb-6 text-red-600">
           <Car className="w-8 h-8" />
-          <h2 className="text-2xl font-bold">AutoRent</h2>
+          <h2 className="text-2xl font-bold">CarRent</h2>
         </div>
 
         <h3 className="text-xl font-semibold text-center mb-1">Create Account</h3>

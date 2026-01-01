@@ -249,27 +249,45 @@ router.put("/cars/:id/availability", async (req, res) => {
 });
 
 // Bookings routes
-router.get("/bookings",async (req,res)=>{
-    const sql=`select b.id,b.pickup_location,b.drop_location,b.start_date,b.end_date,b.total_amount,b.status,u.name as user_name,c.name as car_name from bookings b join users u on b.user_id=u.id join cars c on b.car_id=c.id`;
-    const data=await exe(sql);
-    const sql1=`update bookings set status="Booked"`;
-    await exe(sql1);
+router.get("/bookings", async (req, res) => {
+  try {
+    const sql = `
+      SELECT 
+        b.id,
+        b.pickup_location,
+        b.drop_location,
+        b.start_date,
+        b.end_date,
+        b.total_amount,
+        b.status,
+        u.name AS user_name,
+        c.name AS car_name
+      FROM bookings b
+      JOIN users u ON b.user_id = u.id
+      JOIN cars c ON b.car_id = c.id
+      ORDER BY b.id DESC
+    `;
+    const data = await exe(sql);
     res.json(data);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to fetch bookings" });
+  }
 });
 
-router.put("/bookings/:id/approve", async (req, res) => {
-    const id = req.params.id;
-    const sql = `UPDATE bookings SET status='approved' WHERE id=?`;
-    await exe(sql, [id]);
-    res.json({ message: "Booking Approved Successfully" });
+
+
+router.put("/bookings/:id/status", async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+
+  const sql = "UPDATE bookings SET status=? WHERE id=?";
+  await exe(sql, [status, id]);
+
+  res.json({ message: "Status updated permanently" });
 });
 
-router.put("/bookings/:id/reject", async (req, res) => {
-    const id = req.params.id;
-    const sql = `UPDATE bookings SET status='rejected' WHERE id=?`;
-    await exe(sql, [id]);
-    res.json({ message: "Booking Rejected Successfully" });
-});
+
 
 // Invoice route
 router.get("/bookings/:id/invoice", async (req, res) => {
@@ -394,10 +412,11 @@ router.get("/bar", async (req, res) => {
     const sql = `
       SELECT 
         DATE_FORMAT(b.start_date, '%b') AS month,
-        c.category AS category,
+        cat.name AS category,
         SUM(b.total_amount) AS revenue
       FROM bookings b
-      JOIN cars c ON b.car_id = c.id
+      JOIN cars car ON b.car_id = car.id
+      JOIN categories cat ON car.category_id = cat.id
       GROUP BY month, category
       ORDER BY MIN(b.start_date)
     `;
@@ -420,14 +439,44 @@ router.get("/bar", async (req, res) => {
 
     res.json({
       data: Object.values(chartData),
-      keys: Array.from(keysSet)
+      keys: Array.from(keysSet),
     });
 
   } catch (err) {
-    console.error(err);
+    console.error("Bar chart error:", err);
     res.status(500).json({ message: "Bar chart error" });
   }
 });
+
+
+router.get("/pie", async (req, res) => {
+  try {
+    const sql = `
+      SELECT 
+        c.name AS category,
+        COUNT(car.id) AS total
+      FROM categories c
+      LEFT JOIN cars car ON car.category_id = c.id
+      GROUP BY c.id, c.name
+    `;
+
+    const result = await exe(sql);
+
+    // FORMAT FOR NIVO PIE
+    const formattedData = result.map(item => ({
+      id: item.category,
+      label: item.category,
+      value: Number(item.total),
+    }));
+
+    res.json(formattedData);
+  } catch (err) {
+    console.error("Pie API error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+
 
 // adminRoutes.js
 router.get("/dashboard", async (req, res) => {

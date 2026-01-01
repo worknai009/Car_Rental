@@ -29,45 +29,26 @@ const AdminBookings = () => {
     }
   };
 
-  // Approve Booking
-const handleApprove = async (id) => {
+ const handleStatusChange = async (id, status) => {
+  const token = localStorage.getItem("adminToken");
+
   try {
-    const res = await axios.put(
-      `http://localhost:1000/admin/bookings/${id}/approve`,
-      {},
+    await axios.put(
+      `http://localhost:1000/admin/bookings/${id}/status`,
+      { status },
       { headers: { Authorization: `Bearer ${token}` } }
     );
-    console.log("Response:", res.data);
-    alert("Booking Approved Successfully");
-    setBookings(prev =>
-      prev.map(b => (b.id === id ? { ...b, status: "approved" } : b))
-    );
+
+    // 🔥 Refresh table
+    fetchBookings();
+
+    alert(`Booking ${status} successfully`);
   } catch (err) {
-    console.error("Approve Error:", err.response || err);
-    alert(err.response?.data?.message || "Failed to approve booking");
+    console.error(err);
+    alert("Failed to update booking status");
   }
 };
 
-
-  // Reject Booking
-// Reject Booking
-const handleReject = async (id) => {
-  try {
-    const res = await axios.put(
-      `http://localhost:1000/admin/bookings/${id}/reject`,
-      {},
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-    console.log("Response:", res.data);
-    alert("Booking Rejected Successfully");
-    setBookings(prev =>
-      prev.map(b => (b.id === id ? { ...b, status: "rejected" } : b))
-    );
-  } catch (err) {
-    console.error("Reject Error:", err.response || err);
-    alert(err.response?.data?.message || "Failed to reject booking");
-  }
-};
 
 
   const columns = [
@@ -86,45 +67,43 @@ const handleReject = async (id) => {
       ),
     },
     { field: "status", headerName: "Status", flex: 1 },
-   {
-  field: "actions",
-  headerName: "Actions",
-  flex: 2,
-  renderCell: (params) => (
-    <Stack direction="row" spacing={1}>
-      <Button
-        variant="contained"
-        color="secondary"
-        size="small"
-        component={Link}
-        to={`/admin/invoice/${params.row.id}`}
-      >
-        View Invoice
-      </Button>
-
-      {params.row.status === "Booked" && (
-        <>
+    {
+      field: "actions",
+      headerName: "Actions",
+      flex: 2,
+      renderCell: (params) => (
+        <Stack direction="row" spacing={1}>
+          <Button
+            variant="contained"
+            color="secondary"
+            size="small"
+            component={Link}
+            to={`/admin/invoice/${params.row.id}`}
+          >
+            View Invoice
+          </Button>
           <Button
             variant="contained"
             color="success"
             size="small"
-            onClick={() => handleApprove(params.row.id)}
+            onClick={() => handleStatusChange(params.row.id, "approved")}
           >
             Approve
           </Button>
+
           <Button
             variant="contained"
             color="error"
             size="small"
-            onClick={() => handleReject(params.row.id)}
+            onClick={() => handleStatusChange(params.row.id, "rejected")}
           >
             Reject
           </Button>
-        </>
-      )}
-    </Stack>
-  ),
-}
+
+        </Stack>
+      ),
+    }
+
 
   ];
 
@@ -152,6 +131,7 @@ const handleReject = async (id) => {
           columns={columns}
           getRowId={(row) => row.id}
           loading={loading}
+
         />
       </Box>
     </Box>
