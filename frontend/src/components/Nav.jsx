@@ -1,66 +1,271 @@
-import React, { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { Car, Menu, X, LogIn } from 'lucide-react'
+import React, { useState } from "react";
+import { Link } from "react-router-dom";
+import { Car, Menu, LogIn, Home, Package, Info, Mail, Bookmark } from "lucide-react";
 
 const Nav = () => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [activeItem, setActiveItem] = useState("home");
+
+  const menuItems = [
+    { name: "Home", path: "/", icon: Home },
+    { name: "Cars", path: "/cars", icon: Package },
+    { name: "My Bookings", path: "/my-bookings", icon: Bookmark },
+    { name: "About", path: "/about", icon: Info },
+    { name: "Contact", path: "/contact", icon: Mail },
+    
+  ];
 
   return (
-    <nav className="bg-white shadow-lg sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
+    <>
+      {/* Main Navbar - Fully Transparent with Cyan/Teal Theme */}
+      <nav className="fixed top-0 left-0 right-0 z-50 transition-all duration-700">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-20">
+            {/* Left Section - Logo with Orbital Animation */}
+            <div className="flex items-center flex-shrink-0">
+              <Link to="/" className="flex items-center space-x-3">
+                <div className="relative">
+                  {/* Orbital Ring - Cyan/Teal Theme */}
+                  <div className="absolute inset-0 w-16 h-16 -left-4 -top-4">
+                    <div className="absolute inset-0 border-2 border-cyan-200 rounded-full animate-spin-slow"></div>
+                    <div className="absolute inset-2 border-2 border-teal-300 rounded-full animate-spin-reverse"></div>
+                  </div>
 
-          {/* Logo */}
-          <Link to="/" className="flex items-center space-x-2 text-gray-800">
-            <Car className="h-8 w-8" />
-            <span className="text-xl font-bold">Car</span>
-          </Link>
+                  {/* Logo Icon - Cyan/Teal Gradient */}
+                  <div className="relative z-10 w-12 h-12 bg-gradient-to-br from-cyan-600 to-teal-600 rounded-2xl flex items-center justify-center shadow-xl">
+                    <Car className="h-7 w-7 text-white" />
+                  </div>
+                </div>
 
-          {/* Desktop Menu */}
-          <div className="hidden md:flex items-center space-x-6">
-            <Link to="/" className="hover:text-red-500">Home</Link>
-            <Link to="/cars" className="hover:text-red-500">Cars</Link>
-            <Link to="/about" className="hover:text-red-500">About</Link>
-            <Link to="/contact" className="hover:text-red-500">Contact</Link>
+                {/* Logo Text with White Colors */}
+                <div className="flex flex-col">
+                  <span className="text-2xl sm:text-3xl font-black text-white tracking-tight leading-none drop-shadow-lg">
+                    CarHub
+                  </span>
+                  <span className="text-[10px] text-white/80 font-medium tracking-widest drop-shadow-md">
+                    PREMIUM RIDES
+                  </span>
+                </div>
+              </Link>
+            </div>
+
+            {/* Center Section - Floating Menu Pills (Desktop) */}
+            <div className="hidden lg:flex items-center justify-center absolute left-1/2 transform -translate-x-1/2">
+              <div className="flex items-center space-x-1 bg-white/60 backdrop-blur-xl rounded-full p-2 shadow-lg border border-gray-200/50">
+                {menuItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <Link
+                      key={item.name}
+                      to={item.path}
+                      onClick={() => setActiveItem(item.name.toLowerCase())}
+                      className={`relative flex items-center gap-2 px-5 py-2.5 rounded-full font-semibold transition-all duration-500 group ${
+                        activeItem === item.name.toLowerCase()
+                          ? "bg-gradient-to-r from-cyan-600 to-teal-600 text-white shadow-lg scale-105"
+                          : "text-gray-700 hover:bg-cyan-50 hover:text-cyan-600"
+                      }`}
+                    >
+                      <Icon
+                        className={`h-4 w-4 transition-transform duration-300 ${
+                          activeItem === item.name.toLowerCase()
+                            ? ""
+                            : "group-hover:scale-125"
+                        }`}
+                      />
+                      <span className="text-sm whitespace-nowrap">
+                        {item.name}
+                      </span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Right Section - Auth Buttons */}
+            <div className="flex items-center gap-3">
+              {/* Login - Outlined Glass Button */}
+              <Link
+                to="/login"
+                className="hidden md:flex relative px-5 py-2.5 rounded-2xl bg-white/40 backdrop-blur-md border-2 border-gray-300/50 text-gray-700 font-semibold overflow-hidden group hover:border-cyan-400 transition-all duration-500 hover:shadow-xl"
+              >
+                <span className="relative z-10 flex items-center gap-2 group-hover:text-cyan-600 transition-colors whitespace-nowrap">
+                  <LogIn className="h-4 w-4" />
+                  <span className="hidden sm:inline">Login</span>
+                </span>
+                <span className="absolute inset-0 bg-gradient-to-br from-cyan-50 to-transparent transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left"></span>
+              </Link>
+
+              {/* Register - 3D Elevated Button */}
+              <Link
+                to="/register"
+                className="hidden md:flex relative px-6 py-2.5 rounded-2xl bg-gradient-to-br from-cyan-600 via-teal-600 to-cyan-700 text-white font-bold overflow-hidden group shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-500"
+              >
+                <span className="relative z-10 flex items-center gap-2 whitespace-nowrap">
+                  Register
+                  <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                </span>
+
+                {/* Shine Effect */}
+                <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></span>
+
+                {/* Bottom Shadow */}
+                <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-3/4 h-1 bg-cyan-600/50 blur-lg group-hover:w-full transition-all duration-500"></span>
+              </Link>
+
+              {/* Mobile Menu Button - Morphing Animation */}
+              <button
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                className="lg:hidden relative w-12 h-12 rounded-2xl bg-white/60 backdrop-blur-xl border border-gray-200/50 hover:bg-white/80 transition-all duration-300 shadow-lg flex items-center justify-center"
+              >
+                <div className="relative w-6 h-6">
+                  {/* Hamburger to X Animation */}
+                  <span
+                    className={`absolute left-0 top-1 w-6 h-0.5 bg-gray-700 rounded-full transition-all duration-300 ${
+                      isMenuOpen ? "top-3 rotate-45" : ""
+                    }`}
+                  ></span>
+                  <span
+                    className={`absolute left-0 top-3 w-6 h-0.5 bg-gray-700 rounded-full transition-all duration-300 ${
+                      isMenuOpen ? "opacity-0 scale-0" : ""
+                    }`}
+                  ></span>
+                  <span
+                    className={`absolute left-0 top-5 w-6 h-0.5 bg-gray-700 rounded-full transition-all duration-300 ${
+                      isMenuOpen ? "top-3 -rotate-45" : ""
+                    }`}
+                  ></span>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      {/* Mobile Menu - Sidebar Style with Cyan/Teal Theme */}
+      <div
+        className={`fixed top-0 right-0 h-screen w-80 bg-white/95 backdrop-blur-2xl shadow-2xl z-40 transform transition-transform duration-500 ease-out ${
+          isMenuOpen ? "translate-x-0" : "translate-x-full"
+        } md:hidden`}
+      >
+        <div className="p-8 pt-28">
+          {/* Mobile Menu Items with Stagger */}
+          <div className="space-y-3">
+            {menuItems.map((item, index) => {
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.name}
+                  to={item.path}
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                    setActiveItem(item.name.toLowerCase());
+                  }}
+                  className={`flex items-center gap-4 px-6 py-4 rounded-2xl font-semibold transition-all duration-500 transform ${
+                    activeItem === item.name.toLowerCase()
+                      ? "bg-gradient-to-r from-cyan-600 to-teal-600 text-white shadow-lg translate-x-2"
+                      : "text-gray-700 hover:bg-cyan-50 hover:text-cyan-600 hover:translate-x-2"
+                  }`}
+                  style={{
+                    animation: isMenuOpen
+                      ? `slideInRight 0.4s ease-out ${index * 0.1}s both`
+                      : "none",
+                    transformOrigin: "right",
+                  }}
+                >
+                  <Icon className="h-5 w-5" />
+                  <span className="text-lg">{item.name}</span>
+                </Link>
+              );
+            })}
           </div>
 
-          {/* Auth */}
-          <div className="hidden md:flex items-center space-x-4">
-            <Link to="/login" className="flex items-center gap-2">
-              <LogIn className="h-5 w-5" /> Login
+          {/* Mobile Auth Buttons */}
+          <div className="mt-8 space-y-3">
+            <Link
+              to="/login"
+              onClick={() => setIsMenuOpen(false)}
+              className="flex items-center justify-center gap-2 px-6 py-4 rounded-2xl bg-white border-2 border-gray-300 text-gray-700 font-semibold hover:border-cyan-400 hover:text-cyan-600 transition-all duration-300"
+              style={{
+                animation: isMenuOpen
+                  ? "slideInRight 0.4s ease-out 0.4s both"
+                  : "none",
+              }}
+            >
+              <LogIn className="h-5 w-5" />
+              Login
             </Link>
-            <Link to="/register" className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600">
+
+            <Link
+              to="/register"
+              onClick={() => setIsMenuOpen(false)}
+              className="flex items-center justify-center gap-2 px-6 py-4 rounded-2xl bg-gradient-to-r from-cyan-600 to-teal-600 text-white font-bold shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300"
+              style={{
+                animation: isMenuOpen
+                  ? "slideInRight 0.4s ease-out 0.5s both"
+                  : "none",
+              }}
+            >
               Register
+              <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
             </Link>
           </div>
-
-          {/* Mobile Button */}
-          <button
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="md:hidden"
-          >
-            {isMenuOpen ? <X /> : <Menu />}
-          </button>
         </div>
 
-        {/* Mobile Menu */}
-        {isMenuOpen && (
-          <div className="md:hidden bg-white border-t">
-            <Link to="/" className="block px-3 py-2 hover:text-red-500" onClick={() => setIsMenuOpen(false)}>Home</Link>
-            <Link to="/cars" className="block px-3 py-2 hover:text-red-500" onClick={() => setIsMenuOpen(false)}>Cars</Link>
-            <Link to="/about" className="block px-3 py-2 hover:text-red-500" onClick={() => setIsMenuOpen(false)}>About</Link>
-            <Link to="/contact" className="block px-3 py-2 hover:text-red-500" onClick={() => setIsMenuOpen(false)}>Contact</Link>
-          <div>
-                <Link to="/login" className="block px-3 py-2 hover:text-red-500" onClick={() => setIsMenuOpen(false)}>Login</Link>
-                <Link to="/register" className="block px-3 py-2 bg-red-500 text-white rounded hover:bg-red-600" onClick={() => setIsMenuOpen(false)}>Register</Link>
-                
-          </div>
-
-          </div>
-        )}
+        {/* Decorative Elements - Cyan/Teal */}
+        <div className="absolute top-0 left-0 w-full h-full pointer-events-none overflow-hidden">
+          <div className="absolute -top-20 -right-20 w-40 h-40 bg-cyan-500/10 rounded-full blur-3xl"></div>
+          <div className="absolute -bottom-20 -left-20 w-60 h-60 bg-teal-500/5 rounded-full blur-3xl"></div>
+        </div>
       </div>
-    </nav>
-  )
-}
 
-export default Nav
+      {/* Overlay for Mobile Menu */}
+      {isMenuOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-30 md:hidden transition-opacity duration-500"
+          onClick={() => setIsMenuOpen(false)}
+        ></div>
+      )}
+
+      <style>{`
+        @keyframes slideInRight {
+          from {
+            opacity: 0;
+            transform: translateX(50px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+
+        @keyframes spin-slow {
+          from {
+            transform: rotate(0deg);
+          }
+          to {
+            transform: rotate(360deg);
+          }
+        }
+
+        @keyframes spin-reverse {
+          from {
+            transform: rotate(360deg);
+          }
+          to {
+            transform: rotate(0deg);
+          }
+        }
+
+        .animate-spin-slow {
+          animation: spin-slow 8s linear infinite;
+        }
+
+        .animate-spin-reverse {
+          animation: spin-reverse 6s linear infinite;
+        }
+      `}</style>
+    </>
+  );
+};
+
+export default Nav;

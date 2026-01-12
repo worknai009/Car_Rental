@@ -1,189 +1,448 @@
-import React, { useEffect, useState } from 'react'
-import { MapPin, Calendar, Clock, Search } from 'lucide-react'
-import ScrollReveal from 'scrollreveal'
-import { useNavigate } from 'react-router-dom'
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  MapPin,
+  Calendar,
+  Clock,
+  Search,
+  ArrowRight,
+  Star,
+  Shield,
+  Zap,
+} from "lucide-react";
+import ScrollReveal from "scrollreveal";
+import { useNavigate } from "react-router-dom";
+import userApi from "../utils/userApi";
 
 const Hero = () => {
-  const navigate = useNavigate()
+  const navigate = useNavigate();
 
-  const today = new Date().toISOString().split('T')[0]
+  const [pickupLocation, setPickupLocation] = useState("");
+  const [dropupLocation, setDropupLocation] = useState("");
+  const [pickupDate, setPickupDate] = useState("");
+  const [pickupTime, setPickupTime] = useState("");
+  const [returnDate, setReturnDate] = useState("");
 
-  const [searchData, setSearchData] = useState({
-    pickupLocation: '',
-    dropLocation: '',
-    pickupDate: '',
-    pickupTime: '',
-    returnDate: '',
-  })
+  // ✅ dynamic stats
+  const [stats, setStats] = useState({
+    totalCars: 0,
+    availableCars: 0,
+    avgRating: "4.9",
+  });
+  const [statsLoading, setStatsLoading] = useState(true);
+
+  // ✅ loading state for search button
+  const [searching, setSearching] = useState(false);
 
   useEffect(() => {
-    const sr = ScrollReveal({ reset: false, easing: 'ease-in-out' })
-    sr.reveal('.head-section', { scale: 0.9, duration: 1500 })
-    sr.reveal('.hero-reveal', { origin: 'left', distance: '50px', duration: 1000 })
-    sr.reveal('.reveal-y', {
-      origin: 'bottom',
-      distance: '100px',
+    const sr = ScrollReveal({
+      reset: false,
+      easing: "ease-in-out",
+    });
+
+    sr.reveal(".head-section", {
+      scale: 0.9,
+      duration: 1500,
+    });
+
+    sr.reveal(".hero-reveal", {
+      origin: "left",
+      distance: "50px",
+      duration: 1000,
+    });
+
+    sr.reveal(".reveal-y", {
+      origin: "bottom",
+      distance: "100px",
       duration: 1500,
       interval: 200,
-    })
-  }, [])
+    });
 
-  const handleChange = (e) => {
-    setSearchData({ ...searchData, [e.target.name]: e.target.value })
+    sr.reveal(".feature-card", {
+      origin: "bottom",
+      distance: "50px",
+      duration: 1000,
+      interval: 150,
+    });
+  }, []);
+
+  // ✅ fetch stats for hero cards
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        setStatsLoading(true);
+
+        const [carsRes, availableRes] = await Promise.all([
+          userApi.get("/cars"),
+          userApi.get("/cars/available"),
+        ]);
+
+        const allCars = Array.isArray(carsRes.data) ? carsRes.data : [];
+        const availableCars = Array.isArray(availableRes.data) ? availableRes.data : [];
+
+        const ratings = allCars
+          .map((c) => Number(c.rating))
+          .filter((r) => !Number.isNaN(r) && r > 0);
+
+        const avgRating =
+          ratings.length > 0
+            ? (ratings.reduce((a, b) => a + b, 0) / ratings.length).toFixed(1)
+            : "4.9";
+
+        setStats({
+          totalCars: allCars.length,
+          availableCars: availableCars.length,
+          avgRating,
+        });
+      } catch (err) {
+        console.error("Hero stats error:", err);
+        // keep fallback
+      } finally {
+        setStatsLoading(false);
+      }
+    };
+
+    fetchStats();
+  }, []);
+
+  // ✅ Feature pills (with dynamic count)
+  const features = useMemo(
+    () => [
+      {
+        icon: Star,
+        text: statsLoading ? "..." : `${stats.availableCars}+ Premium Cars`,
+        color: "text-emerald-400",
+      },
+      { icon: Shield, text: "Fully Insured", color: "text-sky-400" },
+      { icon: Zap, text: "Instant Booking", color: "text-amber-400" },
+    ],
+    [stats.availableCars, statsLoading]
+  );
+
+  // ✅ Search action: redirect to Cars page with filters
+const handleSearch = async (e) => {
+  e.preventDefault();
+
+  // ✅ require login before booking flow
+  const token = localStorage.getItem("token");
+  if (!token) {
+    alert("Please login first");
+    navigate("/login");
+    return;
   }
 
-  const handleSearch = () => {
-    if (
-      !searchData.pickupLocation ||
-      !searchData.dropLocation ||
-      !searchData.pickupDate ||
-      !searchData.returnDate
-    ) {
-      alert('Please fill all required fields')
-      return
-    }
-
-    const token = localStorage.getItem('token')
-    if (!token) {
-      alert('You must login first!')
-      navigate('/login')
-      return
-    }
-
-    navigate('/cars', { state: { ...searchData } })
+  if (!pickupLocation || !dropupLocation || !pickupDate || !pickupTime || !returnDate) {
+    alert("Please fill all fields");
+    return;
   }
+
+  const sd = new Date(pickupDate);
+  const ed = new Date(returnDate);
+  if (ed < sd) {
+    alert("Return date must be after pickup date");
+    return;
+  }
+
+  const trip = {
+    pickup_location: pickupLocation,
+    drop_location: dropupLocation,
+    start_date: pickupDate,
+    start_time: pickupTime,
+    end_date: returnDate,
+  };
+
+  try {
+    setSearching(true);
+
+    // ✅ store trip so CarsPage can read it even after refresh
+    localStorage.setItem("tripSearch", JSON.stringify(trip));
+
+    // ✅ redirect with correct params
+    navigate(
+      `/cars?pickup_location=${encodeURIComponent(trip.pickup_location)}&drop_location=${encodeURIComponent(
+        trip.drop_location
+      )}&start_date=${encodeURIComponent(trip.start_date)}&start_time=${encodeURIComponent(
+        trip.start_time
+      )}&end_date=${encodeURIComponent(trip.end_date)}`
+    );
+  } finally {
+    setSearching(false);
+  }
+};
+
 
   return (
-    <section className="relative overflow-hidden text-white py-20 px-5 text-center">
+    <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-30 pb-16 px-4 sm:px-6 lg:px-8">
+      {/* Animated Background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+        <div className="absolute top-20 left-10 w-72 h-72 bg-emerald-500/10 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-20 right-10 w-96 h-96 bg-sky-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        <div className="absolute top-1/2 left-1/2 w-64 h-64 bg-slate-600/10 rounded-full blur-3xl animate-pulse delay-500"></div>
+        <div className="absolute inset-0 bg-grid-pattern opacity-10"></div>
+      </div>
 
-      {/* 🔥 Background Video */}
-      <video
-        className="absolute inset-0 w-full h-full object-cover"
-        src="src/assets/carrentalvideo.mp4"
-        autoPlay
-        loop
-        muted
-        playsInline
-      />
+      <div className="relative z-10 max-w-7xl mx-auto w-full">
+        {/* Header Content */}
+        <div className="text-center mb-12">
+          <div className="head-section space-y-6">
+            <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md px-4 py-2 rounded-full border border-white/20 text-white text-sm font-medium">
+              <Zap className="w-4 h-4 text-emerald-400" />
+              <span>Book in 60 Seconds</span>
+            </div>
 
-      {/* 🔲 Dark Overlay */}
-      <div className="absolute inset-0 bg-black/60"></div>
+            <h1 className="text-4xl sm:text-5xl lg:text-7xl font-black text-white leading-tight">
+              Your Perfect Ride
+              <br />
+              <span className="bg-gradient-to-r from-emerald-400 via-sky-400 to-slate-200 bg-clip-text text-transparent">
+                Awaits You
+              </span>
+            </h1>
 
-      {/* ✅ Content Wrapper */}
-      <div className="relative z-10">
-
-        <h1 className="head-section text-4xl sm:text-5xl font-bold mb-4">
-          Find Your Perfect <span className="text-yellow-400">Rental Car</span>
-        </h1>
-
-        <p className="head-section text-lg sm:text-xl mb-12 text-gray-200">
-          Discover amazing deals on quality vehicles.
-        </p>
-
-        <div className="hero-reveal bg-white text-gray-800 rounded-lg p-6 max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 shadow-lg">
-
-          {/* Pickup Location */}
-          <div className="reveal-y">
-            <label className="flex items-center gap-2 text-sm font-semibold mb-2">
-              <MapPin className="w-5 h-5 text-red-600" />
-              Pickup Location
-            </label>
-            <select
-              name="pickupLocation"
-              value={searchData.pickupLocation}
-              onChange={handleChange}
-              className="w-full p-2 border rounded focus:ring-2 focus:ring-red-500"
-            >
-              <option value="" disabled>Select City</option>
-              <option value="Pune">Pune</option>
-              <option value="Mumbai">Mumbai</option>
-              <option value="Delhi">Delhi</option>
-              <option value="Bangalore">Bangalore</option>
-            </select>
+            <p className="text-lg sm:text-xl text-slate-300 max-w-2xl mx-auto font-medium">
+              Premium vehicles, unbeatable prices, and seamless booking experience
+            </p>
           </div>
 
-          {/* Drop Location */}
-          <div className="reveal-y">
-            <label className="flex items-center gap-2 text-sm font-semibold mb-2">
-              <MapPin className="w-5 h-5 text-gray-500" />
-              Drop Location
-            </label>
-            <select
-              name="dropLocation"
-              value={searchData.dropLocation}
-              onChange={handleChange}
-              className="w-full p-2 border rounded focus:ring-2 focus:ring-red-500"
-            >
-              <option value="" disabled>Select City</option>
-              <option value="Pune">Pune</option>
-              <option value="Mumbai">Mumbai</option>
-              <option value="Delhi">Delhi</option>
-              <option value="Bangalore">Bangalore</option>
-            </select>
+          {/* Feature Pills */}
+          <div className="flex flex-wrap items-center justify-center gap-4 mt-8">
+            {features.map((feature, index) => {
+              const Icon = feature.icon;
+              return (
+                <div
+                  key={index}
+                  className="feature-card flex items-center gap-2 bg-white/10 backdrop-blur-lg px-4 py-2 rounded-full border border-white/20 text-white"
+                >
+                  <Icon className={`w-5 h-5 ${feature.color}`} />
+                  <span className="text-sm font-semibold">{feature.text}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Search Card */}
+        <div className="hero-reveal max-w-5xl mx-auto">
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden">
+            {/* Card Header */}
+            <div className="bg-gradient-to-r from-slate-50 to-slate-100 px-6 py-4 border-b border-slate-200">
+              <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <Search className="w-6 h-6 text-emerald-600" />
+                Find Your Car
+              </h3>
+              <p className="text-sm text-slate-600 mt-1">
+                Fill in the details to search available vehicles
+              </p>
+            </div>
+
+            {/* Search Form */}
+            <form onSubmit={handleSearch} className="p-6 sm:p-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-5">
+                {/* Pickup Location */}
+                <div className="reveal-y space-y-2">
+                  <label className="flex items-center gap-2 text-sm font-bold text-slate-700">
+                    <MapPin className="w-4 h-4 text-emerald-600" />
+                    Pickup Location
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={pickupLocation}
+                      onChange={(e) => setPickupLocation(e.target.value)}
+                      className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl cursor-pointer appearance-none focus:border-emerald-500 focus:bg-white focus:outline-none transition-all duration-300 font-medium text-slate-700"
+                      required
+                    >
+                      <option value="" disabled>
+                        Select City
+                      </option>
+                      {["Pune", "Mumbai", "Delhi", "Bangalore", "Hyderabad", "Chennai"].map(
+                        (c) => (
+                          <option key={c} value={c}>
+                            {c}
+                          </option>
+                        )
+                      )}
+                    </select>
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                      <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Drop Location */}
+                <div className="reveal-y space-y-2">
+                  <label className="flex items-center gap-2 text-sm font-bold text-slate-700">
+                    <MapPin className="w-4 h-4 text-emerald-600" />
+                    Drop Location
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={dropupLocation}
+                      onChange={(e) => setDropupLocation(e.target.value)}
+                      className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl cursor-pointer appearance-none focus:border-emerald-500 focus:bg-white focus:outline-none transition-all duration-300 font-medium text-slate-700"
+                      required
+                    >
+                      <option value="" disabled>
+                        Select City
+                      </option>
+                      {["Pune", "Mumbai", "Delhi", "Bangalore", "Hyderabad", "Chennai"].map(
+                        (c) => (
+                          <option key={c} value={c}>
+                            {c}
+                          </option>
+                        )
+                      )}
+                    </select>
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                      <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Pickup Date */}
+                <div className="reveal-y space-y-2">
+                  <label className="flex items-center gap-2 text-sm font-bold text-slate-700">
+                    <Calendar className="w-4 h-4 text-emerald-600" />
+                    Pickup Date
+                  </label>
+                  <input
+                    type="date"
+                    value={pickupDate}
+                    onChange={(e) => setPickupDate(e.target.value)}
+                    min={new Date().toISOString().split("T")[0]}
+                    className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl cursor-pointer focus:border-emerald-500 focus:bg-white focus:outline-none transition-all duration-300 font-medium text-slate-700"
+                    required
+                  />
+                </div>
+
+                {/* Pickup Time */}
+                <div className="reveal-y space-y-2">
+                  <label className="flex items-center gap-2 text-sm font-bold text-slate-700">
+                    <Clock className="w-4 h-4 text-emerald-600" />
+                    Pickup Time
+                  </label>
+                  <input
+                    type="time"
+                    value={pickupTime}
+                    onChange={(e) => setPickupTime(e.target.value)}
+                    className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl cursor-pointer focus:border-emerald-500 focus:bg-white focus:outline-none transition-all duration-300 font-medium text-slate-700"
+                    required
+                  />
+                </div>
+
+                {/* Return Date */}
+                <div className="reveal-y space-y-2">
+                  <label className="flex items-center gap-2 text-sm font-bold text-slate-700">
+                    <Calendar className="w-4 h-4 text-emerald-600" />
+                    Return Date
+                  </label>
+                  <input
+                    type="date"
+                    value={returnDate}
+                    onChange={(e) => setReturnDate(e.target.value)}
+                    min={pickupDate || new Date().toISOString().split("T")[0]}
+                    className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl cursor-pointer focus:border-emerald-500 focus:bg-white focus:outline-none transition-all duration-300 font-medium text-slate-700"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Search Button */}
+              <div className="reveal-y mt-6">
+                <button
+                  type="submit"
+                  disabled={searching}
+                  className="w-full group relative bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-bold py-4 px-8 rounded-xl transition-all duration-300 overflow-hidden shadow-lg hover:shadow-2xl transform hover:-translate-y-1 disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  <span className="relative z-10 flex items-center justify-center gap-3 text-lg">
+                    <Search className="w-6 h-6" />
+                    {searching ? "Searching..." : "Search Available Cars"}
+                    <ArrowRight className="w-5 h-5 transform group-hover:translate-x-2 transition-transform duration-300" />
+                  </span>
+                  <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></span>
+                </button>
+              </div>
+
+              {/* Quick Info */}
+              <div className="mt-4 flex flex-wrap items-center justify-center gap-4 text-sm text-slate-600">
+                {["No hidden fees", "Free cancellation", "24/7 support"].map((t) => (
+                  <div key={t} className="flex items-center gap-1">
+                    <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+                    <span>{t}</span>
+                  </div>
+                ))}
+              </div>
+            </form>
           </div>
 
-          {/* Pickup Date */}
-          <div className="reveal-y">
-            <label className="flex items-center gap-2 text-sm font-semibold mb-2">
-              <Calendar className="w-5 h-5 text-red-600" />
-              Pickup Date
-            </label>
-            <input
-              type="date"
-              name="pickupDate"
-              value={searchData.pickupDate}
-              min={today}
-              onChange={handleChange}
-              className="w-full p-2 border rounded focus:ring-2 focus:ring-red-500"
-            />
+          {/* ✅ Stats Section (Dynamic) */}
+          <div className="grid grid-cols-3 gap-4 mt-8">
+            <div className="feature-card bg-white/10 backdrop-blur-lg rounded-2xl p-4 text-center border border-white/20">
+              <div className="text-3xl font-black text-white">
+                {statsLoading ? "..." : `${stats.totalCars}+`}
+              </div>
+              <div className="text-sm text-slate-200 font-medium mt-1">
+                Cars Available
+              </div>
+            </div>
+            <div className="feature-card bg-white/10 backdrop-blur-lg rounded-2xl p-4 text-center border border-white/20">
+              <div className="text-3xl font-black text-white">
+                {statsLoading ? "..." : `${stats.availableCars}+`}
+              </div>
+              <div className="text-sm text-slate-200 font-medium mt-1">
+                Available Now
+              </div>
+            </div>
+            <div className="feature-card bg-white/10 backdrop-blur-lg rounded-2xl p-4 text-center border border-white/20">
+              <div className="text-3xl font-black text-white">
+                {statsLoading ? "..." : `${stats.avgRating}★`}
+              </div>
+              <div className="text-sm text-slate-200 font-medium mt-1">
+                Average Rating
+              </div>
+            </div>
           </div>
-
-          {/* Return Date */}
-          <div className="reveal-y">
-            <label className="flex items-center gap-2 text-sm font-semibold mb-2">
-              <Calendar className="w-5 h-5 text-gray-500" />
-              Return Date
-            </label>
-            <input
-              type="date"
-              name="returnDate"
-              value={searchData.returnDate}
-              min={searchData.pickupDate || today}
-              onChange={handleChange}
-              className="w-full p-2 border rounded focus:ring-2 focus:ring-red-500"
-            />
-          </div>
-
-          {/* Pickup Time */}
-          <div className="reveal-y">
-            <label className="flex items-center gap-2 text-sm font-semibold mb-2">
-              <Clock className="w-5 h-5 text-red-600" />
-              Pickup Time
-            </label>
-            <input
-              type="time"
-              name="pickupTime"
-              value={searchData.pickupTime}
-              onChange={handleChange}
-              className="w-full p-2 border rounded focus:ring-2 focus:ring-red-500"
-            />
-          </div>
-
-          {/* Search Button */}
-          <div className="reveal-y md:col-span-3 lg:col-span-5 mt-2">
-            <button
-              onClick={handleSearch}
-              className="w-full flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg"
-            >
-              <Search className="w-5 h-5" />
-              Search Available Cars
-            </button>
-          </div>
-
         </div>
       </div>
-    </section>
-  )
-}
 
-export default Hero
+      {/* Custom Styles */}
+      <style>{`
+        .bg-grid-pattern {
+          background-image: linear-gradient(
+              rgba(255, 255, 255, 0.05) 1px,
+              transparent 1px
+            ),
+            linear-gradient(
+              90deg,
+              rgba(255, 255, 255, 0.05) 1px,
+              transparent 1px
+            );
+          background-size: 50px 50px;
+        }
+
+        .delay-500 {
+          animation-delay: 500ms;
+        }
+
+        .delay-1000 {
+          animation-delay: 1000ms;
+        }
+
+        input[type="date"]::-webkit-calendar-picker-indicator,
+        input[type="time"]::-webkit-calendar-picker-indicator {
+          cursor: pointer;
+          opacity: 0.6;
+          transition: opacity 0.3s;
+        }
+
+        input[type="date"]::-webkit-calendar-picker-indicator:hover,
+        input[type="time"]::-webkit-calendar-picker-indicator:hover {
+          opacity: 1;
+        }
+      `}</style>
+    </section>
+  );
+};
+
+export default Hero;
