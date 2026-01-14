@@ -42,4 +42,7 @@ router.delete(
   bookingController.deleteBooking
 );
 
+router.patch("/:id/complete", jwtUtils.authMiddleware("user"), bookingController.completeBooking);
+
+
 module.exports = router;

@@ -1,29 +1,41 @@
-const { exe } = require("../../config/db");
+const feedbackService = require("../../services/feedback.service");
 
-exports.addFeedback = async (req, res) => {
-  const { booking_id, message, rating } = req.body;
+function getUserId(req) {
+  return req.user?.id || req.user?.user_id || req.user_id || null;
+}
 
-  await exe(
-    `INSERT INTO feedback 
-     (user_id,booking_id,message,rating,created_at)
-     VALUES (?,?,?,?,NOW())`,
-    [req.user.id, booking_id, message, rating]
-  );
-
-  res.json({ message: "Feedback submitted" });
+exports.getCarReviews = async (req, res) => {
+  try {
+    const car_id = Number(req.params.id);
+    const rows = await feedbackService.getCarReviews(car_id);
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ message: "Failed to fetch reviews" });
+  }
 };
 
-exports.getMyFeedbacks = async (req, res) => {
-  const data = await exe(
-    `
-    SELECT f.*, c.name AS car_name
-    FROM feedback f
-    JOIN bookings b ON f.booking_id=b.id
-    JOIN cars c ON b.car_id=c.id
-    WHERE f.user_id=?
-    `,
-    [req.user.id]
-  );
+exports.createFeedback = async (req, res) => {
+  try {
+    const user_id = getUserId(req);
+    if (!user_id) return res.status(401).json({ message: "Unauthorized" });
 
-  res.json(data);
+    const booking_id = Number(req.body.booking_id);
+    const rating = Number(req.body.rating);
+    const message = String(req.body.message || "").trim();
+
+    if (!booking_id || !rating) {
+      return res.status(400).json({ message: "Missing booking_id or rating" });
+    }
+
+    const data = await feedbackService.createFeedback({
+      user_id: Number(user_id),
+      booking_id,
+      rating,
+      message,
+    });
+
+    res.status(201).json({ message: "Feedback submitted", ...data });
+  } catch (err) {
+    res.status(400).json({ message: err.message || "Feedback failed" });
+  }
 };

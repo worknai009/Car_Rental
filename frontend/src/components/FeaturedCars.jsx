@@ -101,15 +101,17 @@ const FeaturedCars = () => {
       return;
     }
 
-    navigate(
-      `/review-booking?car_id=${car.id}` +
-        `&pickup_location=${encodeURIComponent(t.pickup_location)}` +
-        `&drop_location=${encodeURIComponent(t.drop_location)}` +
-        `&start_date=${encodeURIComponent(t.start_date)}` +
-        `&start_time=${encodeURIComponent(t.start_time || "")}` +
-        `&end_date=${encodeURIComponent(t.end_date)}`,
-      { state: { car } }
-    );
+navigate(
+  `/review-booking?car_id=${car.id}` +
+    `&pickup_location=${encodeURIComponent(t.pickup_location)}` +
+    `&drop_location=${encodeURIComponent(t.drop_location)}` +
+    `&start_date=${encodeURIComponent(t.start_date)}` +
+    `&start_time=${encodeURIComponent(t.start_time || "")}` +
+    `&end_date=${encodeURIComponent(t.end_date)}` +
+    `&booking_mode=${encodeURIComponent((t.booking_mode || "RENTAL").toUpperCase())}`, // ✅ ADD
+  { state: { car } }
+);
+
   };
 
   return (

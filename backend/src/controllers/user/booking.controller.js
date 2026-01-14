@@ -8,13 +8,19 @@ exports.createBooking = async (req, res) => {
     const user_id = getUserId(req);
     if (!user_id) return res.status(401).json({ message: "Unauthorized" });
 
+    const booking_mode = (req.body.booking_mode || "RENTAL").toUpperCase();
+    const start_date = req.body.start_date;
+
     const payload = {
       user_id: Number(user_id),
       car_id: Number(req.body.car_id),
       pickup_location: req.body.pickup_location,
       drop_location: req.body.drop_location,
-      start_date: req.body.start_date,
-      end_date: req.body.end_date,
+      start_date,
+      // ✅ TRANSFER = same day
+      end_date: booking_mode === "TRANSFER" ? start_date : req.body.end_date,
+      booking_mode,
+      start_time: req.body.start_time || null,
     };
 
     const data = await bookingService.createBooking(payload);
@@ -24,6 +30,7 @@ exports.createBooking = async (req, res) => {
     res.status(400).json({ message: err.message || "Booking failed" });
   }
 };
+
 
 exports.getMyBookings = async (req, res) => {
   try {
@@ -204,5 +211,36 @@ exports.invoicePdf = async (req, res) => {
   } catch (err) {
     console.error("invoicePdf error:", err);
     return res.status(500).json({ message: "Failed to generate invoice" });
+  }
+};
+
+
+exports.completeBooking = async (req, res) => {
+  try {
+    const user_id = getUserId(req);
+    if (!user_id) return res.status(401).json({ message: "Unauthorized" });
+
+    const booking_id = Number(req.params.id);
+    if (!booking_id) return res.status(400).json({ message: "Invalid booking id" });
+
+    // only user can complete their booking
+    const rows = await exe(
+      `SELECT id, status FROM bookings WHERE id=? AND user_id=? LIMIT 1`,
+      [booking_id, user_id]
+    );
+    if (!rows.length) return res.status(404).json({ message: "Booking not found" });
+
+    const st = String(rows[0].status || "").toLowerCase();
+    if (st === "cancelled") return res.status(400).json({ message: "Cancelled booking can't be completed" });
+
+    await exe(
+      `UPDATE bookings SET status='COMPLETED' WHERE id=? AND user_id=?`,
+      [booking_id, user_id]
+    );
+
+    return res.json({ message: "Ride completed", booking_id });
+  } catch (err) {
+    console.error("COMPLETE BOOKING ERROR:", err);
+    return res.status(500).json({ message: "Failed to complete ride" });
   }
 };

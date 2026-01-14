@@ -1,18 +1,16 @@
 const router = require("express").Router();
-const feedbackCtrl = require("../../controllers/user/feedback.controller");
-const jwtUtils = require("../../utils/jwt");
+const auth = require("../../middleware/auth.middleware"); // your auth middleware
+const feedbackController = require("../../controllers/user/feedback.controller");
 
-router.post(
-  "/feedback",
-  jwtUtils.authMiddleware("user"),
-  feedbackCtrl.addFeedback
-);
 
-router.get(
-  "/feedbacks",
-  jwtUtils.authMiddleware("user"),
-  feedbackCtrl.getMyFeedbacks
-);
+
+// ✅ Reviews by car_id
+router.get("/cars/:id/reviews", feedbackController.getCarReviews);
+
+// ✅ Create feedback (requires login)
+router.post("/", auth, feedbackController.createFeedback);
+
+module.exports = router;
 
 
 module.exports = router;

@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 
 const CarDetails = () => {
-  const { id } = useParams(); // route: /cars/:id
+  const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -27,39 +27,54 @@ const CarDetails = () => {
   const [loadingReviews, setLoadingReviews] = useState(true);
   const [error, setError] = useState("");
 
-  // ---------- Trip (pickup/drop/dates) from URL or localStorage ----------
-  const trip = useMemo(() => {
-    const qs = new URLSearchParams(location.search);
+  // ✅ Trip from URL or localStorage
+const trip = useMemo(() => {
+  const qs = new URLSearchParams(location.search);
 
-    const t = {
-      pickup_location: qs.get("pickup_location") || "",
-      drop_location: qs.get("drop_location") || "",
-      start_date: qs.get("start_date") || "",
-      start_time: qs.get("start_time") || "",
-      end_date: qs.get("end_date") || "",
-    };
+  const t = {
+    booking_mode: (qs.get("booking_mode") || "").toUpperCase(),   // ✅ NEW
+    pickup_location: qs.get("pickup_location") || "",
+    drop_location: qs.get("drop_location") || "",
+    start_date: qs.get("start_date") || "",
+    start_time: qs.get("start_time") || "",
+    end_date: qs.get("end_date") || "",
+  };
 
-    const hasUrlTrip =
-      t.pickup_location && t.drop_location && t.start_date && t.end_date;
+  // ✅ If URL trip is complete, store it
+  const hasUrlTrip = t.pickup_location && t.drop_location && t.start_date;
+  if (hasUrlTrip) {
+    // if transfer and end_date missing → same day
+    if ((t.booking_mode || "RENTAL") === "TRANSFER" && !t.end_date) {
+      t.end_date = t.start_date;
+    }
+    if (!t.booking_mode) t.booking_mode = "RENTAL";
+    localStorage.setItem("tripSearch", JSON.stringify(t));
+    return t;
+  }
 
-    if (hasUrlTrip) {
-      localStorage.setItem("tripSearch", JSON.stringify(t));
+  // ✅ Else load from localStorage
+  const saved = localStorage.getItem("tripSearch");
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      const mode = String(parsed.booking_mode || "RENTAL").toUpperCase();
+      return {
+        booking_mode: mode,
+        pickup_location: parsed.pickup_location || "",
+        drop_location: parsed.drop_location || "",
+        start_date: parsed.start_date || "",
+        start_time: parsed.start_time || "",
+        end_date: mode === "TRANSFER" ? (parsed.start_date || "") : (parsed.end_date || ""),
+      };
+    } catch {
       return t;
     }
+  }
 
-    const saved = localStorage.getItem("tripSearch");
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch {
-        return t;
-      }
-    }
+  // default
+  return { ...t, booking_mode: "RENTAL" };
+}, [location.search]);
 
-    return t;
-  }, [location.search]);
-
-  // ---------- Fetch car ----------
   useEffect(() => {
     const fetchCar = async () => {
       try {
@@ -75,11 +90,9 @@ const CarDetails = () => {
         setLoadingCar(false);
       }
     };
-
     fetchCar();
   }, [id]);
 
-  // ---------- Fetch reviews ----------
   useEffect(() => {
     const fetchReviews = async () => {
       try {
@@ -93,7 +106,6 @@ const CarDetails = () => {
         setLoadingReviews(false);
       }
     };
-
     fetchReviews();
   }, [id]);
 
@@ -102,21 +114,25 @@ const CarDetails = () => {
     return `http://localhost:1000/public/${car.cars_image}`;
   }, [car]);
 
-  const handleBookNow = () => {
-    // If you want: require login here (optional)
-    // const token = localStorage.getItem("token");
-    // if (!token) return navigate("/login", { state: { from: location } });
+const handleBookNow = () => {
+  const qs = new URLSearchParams();
+  qs.set("car_id", String(car?.id || id));
+  qs.set("pickup_location", trip.pickup_location || "");
+  qs.set("drop_location", trip.drop_location || "");
+  qs.set("start_date", trip.start_date || "");
+  qs.set("start_time", trip.start_time || "");
+  qs.set("booking_mode", (trip.booking_mode || "RENTAL").toUpperCase()); // ✅ MUST
+  qs.set(
+    "end_date",
+    (trip.booking_mode || "RENTAL").toUpperCase() === "TRANSFER"
+      ? (trip.start_date || "")
+      : (trip.end_date || "")
+  );
 
-    const qs = new URLSearchParams();
-    qs.set("car_id", String(car?.id || id));
-    qs.set("pickup_location", trip.pickup_location || "");
-    qs.set("drop_location", trip.drop_location || "");
-    qs.set("start_date", trip.start_date || "");
-    qs.set("start_time", trip.start_time || "");
-    qs.set("end_date", trip.end_date || "");
+  navigate(`/review-booking?${qs.toString()}`, { state: { car } });
+};
 
-    navigate(`/review-booking?${qs.toString()}`, { state: { car } });
-  };
+
 
   if (loadingCar) {
     return (
@@ -141,9 +157,7 @@ const CarDetails = () => {
             </button>
             <h1 className="text-xl font-black text-gray-900">Car Details</h1>
           </div>
-          <p className="text-red-600 font-semibold">
-            {error || "Car not found"}
-          </p>
+          <p className="text-red-600 font-semibold">{error || "Car not found"}</p>
         </div>
       </div>
     );
@@ -172,19 +186,13 @@ const CarDetails = () => {
           ) : null}
         </div>
 
-        {/* Main grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left: Image + info */}
+          {/* Left */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Image card */}
             <div className="bg-white rounded-3xl shadow overflow-hidden border">
               <div className="w-full h-[320px] bg-gray-100">
                 {imageUrl ? (
-                  <img
-                    src={imageUrl}
-                    alt={car.name}
-                    className="w-full h-full object-cover"
-                  />
+                  <img src={imageUrl} alt={car.name} className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-gray-400">
                     No image
@@ -195,9 +203,7 @@ const CarDetails = () => {
               <div className="p-6">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <h1 className="text-3xl font-black text-gray-900">
-                      {car.name}
-                    </h1>
+                    <h1 className="text-3xl font-black text-gray-900">{car.name}</h1>
                     <p className="text-gray-600 mt-1">
                       {car.brand} • {car.category_name || "Category"}
                     </p>
@@ -205,54 +211,28 @@ const CarDetails = () => {
 
                   <div className="flex items-center gap-2 bg-yellow-50 px-3 py-2 rounded-xl">
                     <Star className="w-4 h-4 text-yellow-500 fill-current" />
-                    <span className="font-black text-gray-900">
-                      {rating.toFixed(1)}
-                    </span>
+                    <span className="font-black text-gray-900">{rating.toFixed(1)}</span>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
                   <Spec icon={MapPin} label="City" value={car.city || "-"} />
                   <Spec icon={Calendar} label="Year" value={car.year || "-"} />
-                  <Spec
-                    icon={Users}
-                    label="Seats"
-                    value={car.seats ? `${car.seats} Seats` : "-"}
-                  />
-                  <Spec
-                    icon={Fuel}
-                    label="Fuel"
-                    value={car.fuel_type || "-"}
-                  />
+                  <Spec icon={Users} label="Seats" value={car.seats ? `${car.seats} Seats` : "-"} />
+                  <Spec icon={Fuel} label="Fuel" value={car.fuel_type || "-"} />
                 </div>
 
-                {/* Details text */}
                 <div className="mt-6">
-                  <h2 className="text-lg font-black text-gray-900 mb-2">
-                    Car Details
-                  </h2>
+                  <h2 className="text-lg font-black text-gray-900 mb-2">Car Details</h2>
                   <p className="text-gray-600 leading-relaxed">
                     {car.car_details || "No details available."}
                   </p>
                 </div>
 
-                {/* Trust badges */}
                 <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <MiniBadge
-                    icon={Shield}
-                    title="Secure Booking"
-                    sub="Protected checkout"
-                  />
-                  <MiniBadge
-                    icon={Clock}
-                    title="Fast Pickup"
-                    sub="Quick confirmation"
-                  />
-                  <MiniBadge
-                    icon={CheckCircle2}
-                    title="Verified Cars"
-                    sub="Quality checked"
-                  />
+                  <MiniBadge icon={Shield} title="Secure Booking" sub="Protected checkout" />
+                  <MiniBadge icon={Clock} title="Fast Pickup" sub="Quick confirmation" />
+                  <MiniBadge icon={CheckCircle2} title="Verified Cars" sub="Quality checked" />
                 </div>
               </div>
             </div>
@@ -276,21 +256,14 @@ const CarDetails = () => {
               ) : (
                 <div className="space-y-4">
                   {reviews.map((r) => (
-                    <div
-                      key={r.id}
-                      className="p-4 rounded-2xl border bg-gray-50"
-                    >
+                    <div key={r.id} className="p-4 rounded-2xl border bg-gray-50">
                       <div className="flex items-center justify-between">
-                        <div className="font-bold text-gray-900">
-                          {r.user_name || "User"}
-                        </div>
+                        <div className="font-bold text-gray-900">{r.user_name || "User"}</div>
                         <div className="text-sm text-gray-600">
                           {r.created_at ? String(r.created_at).slice(0, 10) : ""}
                         </div>
                       </div>
-                      <div className="mt-2 text-gray-700">
-                        {r.message || r.feedback || "—"}
-                      </div>
+                      <div className="mt-2 text-gray-700">{r.message || r.feedback || "—"}</div>
                     </div>
                   ))}
                 </div>
@@ -298,14 +271,13 @@ const CarDetails = () => {
             </div>
           </div>
 
-          {/* Right: Booking summary */}
+          {/* Right */}
           <div className="lg:col-span-1">
             <div className="sticky top-24 bg-white rounded-3xl shadow border p-6">
-              <h3 className="text-xl font-black text-gray-900 mb-4">
-                Booking Summary
-              </h3>
+              <h3 className="text-xl font-black text-gray-900 mb-4">Booking Summary</h3>
 
               <div className="space-y-3 text-sm">
+                <Row label="Mode" value={trip.booking_mode || "RENTAL"} />
                 <Row label="Pickup" value={trip.pickup_location || "—"} />
                 <Row label="Drop" value={trip.drop_location || "—"} />
                 <Row label="Start" value={trip.start_date || "—"} />
@@ -316,9 +288,7 @@ const CarDetails = () => {
 
               <div className="flex items-end justify-between">
                 <div>
-                  <p className="text-xs text-gray-500 font-semibold">
-                    Price per day
-                  </p>
+                  <p className="text-xs text-gray-500 font-semibold">Price per day</p>
                   <p className="text-3xl font-black text-gray-900 flex items-center gap-1">
                     <IndianRupee className="w-6 h-6" />
                     {Number(car.price_per_day || 0).toLocaleString()}
@@ -347,14 +317,6 @@ const CarDetails = () => {
               >
                 Book Now
               </button>
-
-              {/* Hint */}
-              {!trip.pickup_location && (
-                <p className="mt-4 text-xs text-gray-500">
-                  Tip: Search trip on Home first (pickup/drop/dates) so booking
-                  fills automatically.
-                </p>
-              )}
             </div>
           </div>
         </div>

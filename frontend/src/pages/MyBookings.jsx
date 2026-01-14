@@ -1,17 +1,34 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import userApi from "../utils/userApi";
-import { XCircle, FileText, X } from "lucide-react";
+import { XCircle, FileText, X, Star } from "lucide-react";
 
 const MyBookings = () => {
+  const navigate = useNavigate();
+
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // cancel modal
+  // today (yyyy-mm-dd)
+  const today = new Date().toISOString().slice(0, 10);
+
+  // ----------------------------
+  // Cancel modal state
+  // ----------------------------
   const [openCancel, setOpenCancel] = useState(false);
   const [selected, setSelected] = useState(null);
   const [reason, setReason] = useState("Change of Plan");
-  const [message, setMessage] = useState("");
+  const [cancelMessage, setCancelMessage] = useState("");
   const [submittingCancel, setSubmittingCancel] = useState(false);
+
+  // ----------------------------
+  // Feedback modal state
+  // ----------------------------
+  const [openFeedback, setOpenFeedback] = useState(false);
+  const [fbBooking, setFbBooking] = useState(null);
+  const [fbRating, setFbRating] = useState(5);
+  const [fbMessage, setFbMessage] = useState("");
+  const [submittingFeedback, setSubmittingFeedback] = useState(false);
 
   const fetchBookings = async () => {
     try {
@@ -34,7 +51,7 @@ const MyBookings = () => {
   const openCancelForm = (booking) => {
     setSelected(booking);
     setReason("Change of Plan");
-    setMessage("");
+    setCancelMessage("");
     setOpenCancel(true);
   };
 
@@ -46,7 +63,7 @@ const MyBookings = () => {
       setSubmittingCancel(true);
       await userApi.post(`/bookings/cancel-request/${selected.id}`, {
         reason,
-        message,
+        message: cancelMessage,
       });
       alert("Cancel request sent to admin ✅");
       setOpenCancel(false);
@@ -59,40 +76,93 @@ const MyBookings = () => {
     }
   };
 
-  // ✅ Download invoice PDF (same as yours)
-const downloadInvoice = async (id) => {
-  try {
-    const res = await userApi.get(`/bookings/invoice/${id}`, {
-      responseType: "arraybuffer",
-    });
+  // ✅ can complete ride only if end_date <= today and not cancelled/completed
+  const canComplete = (b) => {
+    const st = String(b.status || "").toUpperCase();
+    if (st === "CANCELLED" || st === "COMPLETED" || st === "CANCEL_REQUESTED")
+      return false;
+    return String(b.end_date || "") <= today;
+  };
 
-    const ct = (res.headers?.["content-type"] || "").toLowerCase();
+  // ✅ Complete Ride -> PATCH -> open feedback modal
+  const handleCompleteRide = async (booking) => {
+    if (!booking?.id) return;
 
-    // ✅ accept only real PDFs
-    if (!ct.includes("application/pdf")) {
-      const text = new TextDecoder().decode(res.data);
-      alert(text || "Invoice response is not a PDF (check backend)");
-      return;
+    try {
+      await userApi.patch(`/bookings/${booking.id}/complete`);
+
+      // ✅ open feedback modal automatically
+      setFbBooking(booking);
+      setFbRating(5);
+      setFbMessage("");
+      setOpenFeedback(true);
+
+      // refresh list so status becomes COMPLETED
+      fetchBookings();
+    } catch (e) {
+      alert(e?.response?.data?.message || "Failed to complete ride");
+    }
+  };
+
+  // ✅ Submit Feedback (ONLY booking_id + rating + message)
+  const submitFeedback = async () => {
+    if (!fbBooking?.id) return;
+    if (!fbRating || fbRating < 1 || fbRating > 5) {
+      return alert("Please select rating (1 to 5)");
     }
 
-    const blob = new Blob([res.data], { type: "application/pdf" });
-    const url = window.URL.createObjectURL(blob);
+    try {
+      setSubmittingFeedback(true);
 
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `invoice-booking-${id}.pdf`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+      await userApi.post("/feedback", {
+        booking_id: Number(fbBooking.id),
+        rating: Number(fbRating),
+        message: fbMessage,
+      });
 
-    window.URL.revokeObjectURL(url);
-  } catch (err) {
-    console.error("Invoice download error:", err);
-    alert(err?.response?.data?.message || "Invoice download failed");
-  }
-};
+      alert("Feedback submitted ✅ Thank you!");
+      setOpenFeedback(false);
+      setFbBooking(null);
+      setFbRating(5);
+      setFbMessage("");
+    } catch (err) {
+      console.error("Feedback error:", err);
+      alert(err?.response?.data?.message || "Feedback failed");
+    } finally {
+      setSubmittingFeedback(false);
+    }
+  };
 
+  // ✅ Download invoice PDF
+  const downloadInvoice = async (id) => {
+    try {
+      const res = await userApi.get(`/bookings/invoice/${id}`, {
+        responseType: "arraybuffer",
+      });
 
+      const ct = (res.headers?.["content-type"] || "").toLowerCase();
+      if (!ct.includes("application/pdf")) {
+        const text = new TextDecoder().decode(res.data);
+        alert(text || "Invoice response is not a PDF (check backend)");
+        return;
+      }
+
+      const blob = new Blob([res.data], { type: "application/pdf" });
+      const url = window.URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `invoice-booking-${id}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Invoice download error:", err);
+      alert(err?.response?.data?.message || "Invoice download failed");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 pt-24 pb-10 px-4">
@@ -107,55 +177,81 @@ const downloadInvoice = async (id) => {
           </div>
         ) : (
           <div className="space-y-4">
-            {bookings.map((b) => (
-              <div key={b.id} className="bg-white p-6 rounded-2xl shadow border">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <div className="text-lg font-bold text-gray-900">
-                      Booking #{b.id} • Car ID: {b.car_id}
-                    </div>
-                    <div className="text-sm text-gray-600 mt-1">
-                      {b.pickup_location} → {b.drop_location}
-                    </div>
-                    <div className="text-sm text-gray-600">
-                      {b.start_date} to {b.end_date}
-                    </div>
-                    <div className="text-sm font-semibold text-gray-900 mt-2">
-                      Total: ₹{b.total_amount}
-                    </div>
-                    <div className="text-xs mt-1">
-                      Status:{" "}
-                      <span className="font-bold">
-                        {b.status || "CONFIRMED"}
-                      </span>
-                    </div>
-                  </div>
+            {bookings.map((b) => {
+              const st = String(b.status || "").toUpperCase();
 
-                  <div className="flex flex-col gap-2">
-                    <button
-                      onClick={() => downloadInvoice(b.id)}
-                      className="px-4 py-2 rounded-xl bg-gray-900 text-white font-bold flex items-center gap-2"
-                    >
-                      <FileText className="w-4 h-4" />
-                      Invoice PDF
-                    </button>
+              return (
+                <div key={b.id} className="bg-white p-6 rounded-2xl shadow border">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <div className="text-lg font-bold text-gray-900">
+                        Booking #{b.id} • Car ID: {b.car_id}
+                      </div>
+                      <div className="text-sm text-gray-600 mt-1">
+                        {b.pickup_location} → {b.drop_location}
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        {b.start_date} to {b.end_date}
+                      </div>
+                      <div className="text-sm font-semibold text-gray-900 mt-2">
+                        Total: ₹{b.total_amount}
+                      </div>
+                      <div className="text-xs mt-1">
+                        Status: <span className="font-bold">{st || "CONFIRMED"}</span>
+                      </div>
+                    </div>
 
-                    <button
-                      onClick={() => openCancelForm(b)}
-                      disabled={b.status === "CANCELLED" || b.status === "CANCEL_REQUESTED"}
-                      className={`px-4 py-2 rounded-xl font-bold flex items-center gap-2 ${
-                        b.status === "CANCELLED" || b.status === "CANCEL_REQUESTED"
-                          ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-                          : "bg-orange-100 text-orange-700"
-                      }`}
-                    >
-                      <XCircle className="w-4 h-4" />
-                      {b.status === "CANCEL_REQUESTED" ? "Requested" : "Cancel"}
-                    </button>
+                    <div className="flex flex-col gap-2">
+                      <button
+                        onClick={() => downloadInvoice(b.id)}
+                        className="px-4 py-2 rounded-xl bg-gray-900 text-white font-bold flex items-center gap-2"
+                      >
+                        <FileText className="w-4 h-4" />
+                        Invoice PDF
+                      </button>
+
+                      <button
+                        onClick={() => openCancelForm(b)}
+                        disabled={st === "CANCELLED" || st === "CANCEL_REQUESTED"}
+                        className={`px-4 py-2 rounded-xl font-bold flex items-center gap-2 ${
+                          st === "CANCELLED" || st === "CANCEL_REQUESTED"
+                            ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                            : "bg-orange-100 text-orange-700"
+                        }`}
+                      >
+                        <XCircle className="w-4 h-4" />
+                        {st === "CANCEL_REQUESTED" ? "Requested" : "Cancel"}
+                      </button>
+
+                      {/* ✅ Complete Ride Button */}
+                      {canComplete(b) && (
+                        <button
+                          onClick={() => handleCompleteRide(b)}
+                          className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+                        >
+                          Complete Ride
+                        </button>
+                      )}
+
+                      {/* Optional: if already completed, allow feedback again */}
+                      {st === "COMPLETED" && (
+                        <button
+                          onClick={() => {
+                            setFbBooking(b);
+                            setFbRating(5);
+                            setFbMessage("");
+                            setOpenFeedback(true);
+                          }}
+                          className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-700 text-white font-bold"
+                        >
+                          Give Feedback
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -199,8 +295,8 @@ const downloadInvoice = async (id) => {
                   Message to Admin (optional)
                 </label>
                 <textarea
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
+                  value={cancelMessage}
+                  onChange={(e) => setCancelMessage(e.target.value)}
                   rows={4}
                   placeholder="Write your cancellation request message..."
                   className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 bg-gray-50 focus:bg-white focus:border-orange-500 outline-none resize-none"
@@ -213,6 +309,77 @@ const downloadInvoice = async (id) => {
                 className="w-full py-4 rounded-2xl bg-orange-600 hover:bg-orange-700 text-white font-black shadow-lg disabled:opacity-60"
               >
                 {submittingCancel ? "Sending..." : "Send Cancel Request"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ✅ Feedback Modal */}
+      {openFeedback && fbBooking && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center px-4 z-50">
+          <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl border overflow-hidden">
+            <div className="p-5 border-b flex items-center justify-between">
+              <h2 className="text-xl font-black text-gray-900">
+                Feedback (Booking #{fbBooking.id})
+              </h2>
+              <button
+                onClick={() => setOpenFeedback(false)}
+                className="w-10 h-10 rounded-xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4">
+              {/* Rating */}
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">
+                  Rating
+                </label>
+                <div className="flex items-center gap-2">
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setFbRating(n)}
+                      className={`w-10 h-10 rounded-xl border flex items-center justify-center ${
+                        fbRating >= n
+                          ? "bg-yellow-100 border-yellow-300"
+                          : "bg-gray-50 border-gray-200"
+                      }`}
+                    >
+                      <Star
+                        className={`w-5 h-5 ${
+                          fbRating >= n ? "text-yellow-500 fill-current" : "text-gray-400"
+                        }`}
+                      />
+                    </button>
+                  ))}
+                  <span className="ml-2 font-bold text-gray-900">{fbRating}/5</span>
+                </div>
+              </div>
+
+              {/* Message */}
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">
+                  Message
+                </label>
+                <textarea
+                  value={fbMessage}
+                  onChange={(e) => setFbMessage(e.target.value)}
+                  rows={4}
+                  placeholder="Write your feedback..."
+                  className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 bg-gray-50 focus:bg-white focus:border-cyan-500 outline-none resize-none"
+                />
+              </div>
+
+              <button
+                onClick={submitFeedback}
+                disabled={submittingFeedback}
+                className="w-full py-4 rounded-2xl bg-cyan-600 hover:bg-cyan-700 text-white font-black shadow-lg disabled:opacity-60"
+              >
+                {submittingFeedback ? "Submitting..." : "Submit Feedback"}
               </button>
             </div>
           </div>

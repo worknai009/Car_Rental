@@ -17,22 +17,48 @@ import Header from "../../components/admin/Header";
 import adminApi from "../../utils/adminApi";
 import { RefreshCw, Eye, Printer } from "lucide-react";
 
-const STATUS_OPTIONS = ["Booked", "Paid", "Cancelled","Approved"];
+// ✅ Use UPPERCASE only (DB best practice)
+const STATUS_OPTIONS = [
+  "BOOKED",
+  "APPROVED",
+  "CONFIRMED",
+  "PAID",
+  "COMPLETED",
+  "CANCELLED",
+];
 
+// ✅ Convert any incoming status into one of STATUS_OPTIONS
 const normalizeStatus = (s) => {
-  if (!s) return "Booked";
-  const v = String(s).trim().toLowerCase();
-  if (v === "approved" || v === "pending") return "Booked";
-  if (v === "paid") return "Paid";
-  if (v === "cancelled" || v === "canceled") return "Cancelled";
-  if (v === "booked") return "Booked";
-  return "Booked";
+  if (!s) return "BOOKED";
+  const v = String(s).trim().toUpperCase();
+
+  // common variations
+  if (v === "CANCELED") return "CANCELLED";
+  if (v === "PENDING") return "BOOKED";
+
+  // if value is known, return it
+  if (STATUS_OPTIONS.includes(v)) return v;
+
+  return "BOOKED";
+};
+
+const labelStatus = (s) => {
+  const v = normalizeStatus(s);
+  // prettier display
+  return v.charAt(0) + v.slice(1).toLowerCase();
 };
 
 const StatusChip = ({ value }) => {
   const s = normalizeStatus(value);
-  const color = s === "Paid" ? "success" : s === "Cancelled" ? "error" : "warning";
-  return <Chip size="small" label={s} color={color} variant="outlined" />;
+  const color =
+    s === "PAID" || s === "COMPLETED"
+      ? "success"
+      : s === "CANCELLED"
+      ? "error"
+      : s === "APPROVED" || s === "CONFIRMED"
+      ? "info"
+      : "warning";
+  return <Chip size="small" label={labelStatus(s)} color={color} variant="outlined" />;
 };
 
 const safeText = (v) => {
@@ -55,22 +81,20 @@ const BookingList = () => {
       const res = await adminApi.get("/admin/bookings");
       const data = Array.isArray(res.data) ? res.data : [];
 
-      // ✅ normalize keys so grid always gets correct fields
       const normalized = data.map((r) => ({
         ...r,
         id: r.id ?? r.booking_id, // DataGrid needs id
         status: normalizeStatus(r.status),
-        // keep backend formatted strings as-is
         start_date: r.start_date ?? r.startDate ?? r.from_date ?? r.fromDate ?? null,
         end_date: r.end_date ?? r.endDate ?? r.to_date ?? r.toDate ?? null,
         total_amount: r.total_amount ?? r.totalAmount ?? r.amount ?? null,
       }));
 
-      console.log("Bookings sample:", normalized[0]); // check in console
+      console.log("Bookings sample:", normalized[0]);
       setRows(normalized);
     } catch (err) {
       console.error("Fetch bookings error:", err);
-      alert(err.response?.data?.message || "Failed to fetch bookings");
+      alert(err?.response?.data?.message || "Failed to fetch bookings");
     } finally {
       setLoading(false);
     }
@@ -80,20 +104,25 @@ const BookingList = () => {
     fetchBookings();
   }, []);
 
-  const updateStatus = async (id, newStatus) => {
-    const safe = STATUS_OPTIONS.includes(newStatus) ? newStatus : "Booked";
+  // ✅ FIXED: use setRows (not setBookings)
+const updateStatus = async (id, newStatus) => {
+  try {
+    const status = normalizeStatus(newStatus);
 
-    const prev = rows;
-    setRows((p) => p.map((b) => (b.id === id ? { ...b, status: safe } : b)));
+    // ✅ match backend route
+    await adminApi.patch(`/admin/bookings/${id}/status`, { status });
 
-    try {
-      await adminApi.put(`/admin/bookings/${id}`, { status: safe });
-    } catch (err) {
-      console.error("Update status error:", err);
-      alert(err.response?.data?.message || "Failed to update status");
-      setRows(prev);
-    }
-  };
+    // ✅ update UI immediately
+    setRows((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)));
+
+    alert("Status updated ✅");
+  } catch (err) {
+    console.error("Update status error:", err);
+    alert(err?.response?.data?.message || "Failed to update status");
+  }
+};
+
+
 
   const openDetails = async (id) => {
     setOpen(true);
@@ -109,7 +138,7 @@ const BookingList = () => {
       });
     } catch (err) {
       console.error("Booking details error:", err);
-      alert(err.response?.data?.message || "Failed to load booking details");
+      alert(err?.response?.data?.message || "Failed to load booking details");
       setOpen(false);
     } finally {
       setDetailsLoading(false);
@@ -160,7 +189,6 @@ const BookingList = () => {
       { field: "pickup_location", headerName: "Pickup", flex: 1, minWidth: 160 },
       { field: "drop_location", headerName: "Drop", flex: 1, minWidth: 160 },
 
-      // ✅ SHOW RAW STRING (backend already returns YYYY-MM-DD)
       {
         field: "start_date",
         headerName: "Start Date",
@@ -184,11 +212,9 @@ const BookingList = () => {
       {
         field: "status",
         headerName: "Status",
-        minWidth: 170,
+        minWidth: 180,
         renderCell: (params) => {
-          const current = STATUS_OPTIONS.includes(params.row.status)
-            ? params.row.status
-            : "Booked";
+          const current = normalizeStatus(params.row.status);
 
           return (
             <Select
@@ -199,7 +225,7 @@ const BookingList = () => {
             >
               {STATUS_OPTIONS.map((s) => (
                 <MenuItem key={s} value={s}>
-                  {s}
+                  {labelStatus(s)}
                 </MenuItem>
               ))}
             </Select>
@@ -237,7 +263,7 @@ const BookingList = () => {
         ),
       },
     ],
-    [rows]
+    []
   );
 
   return (

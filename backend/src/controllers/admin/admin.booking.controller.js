@@ -73,15 +73,45 @@ exports.getBookingById = async (req, res) => {
   }
 };
 
+
+
+const ALLOWED_STATUS = [
+  "BOOKED",
+  "APPROVED",
+  "CONFIRMED", 
+  "PAID",
+  "COMPLETED",
+  "CANCELLED",
+  "CANCEL_REQUESTED",
+];
+
 exports.updateBookingStatus = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { status } = req.body;
+    const id = Number(req.params.id);
+    if (!id) return res.status(400).json({ message: "Invalid booking id" });
 
-    await exe("UPDATE bookings SET status=? WHERE id=?", [status, id]);
-    res.json({ message: "Booking status updated" });
+    let { status } = req.body;
+    status = String(status || "").trim().toUpperCase();
+
+    if (!status) return res.status(400).json({ message: "Status is required" });
+    if (!ALLOWED_STATUS.includes(status)) {
+      return res.status(400).json({
+        message: `Invalid status. Allowed: ${ALLOWED_STATUS.join(", ")}`,
+      });
+    }
+
+    const result = await exe("UPDATE bookings SET status=? WHERE id=?", [status, id]);
+
+    // mysql2 can return either object or [object]
+    const info = Array.isArray(result) ? result[0] : result;
+    const affected = info?.affectedRows ?? info?.[0]?.affectedRows ?? 0;
+
+    if (!affected) return res.status(404).json({ message: "Booking not found" });
+
+    return res.json({ message: "Booking status updated", id, status });
   } catch (err) {
     console.error("BOOKING STATUS ERROR:", err);
-    res.status(500).json({ message: "Failed to update status" });
+    return res.status(500).json({ message: "Failed to update status" });
   }
 };
+

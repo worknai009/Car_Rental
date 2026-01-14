@@ -46,17 +46,51 @@ const CarsPage = () => {
   // -------------------------
   const [trip, setTrip] = useState(null);
 
+
+  const getTripData = () => {
+    if (trip) return trip;
+
+    const saved = localStorage.getItem("tripSearch");
+    if (!saved) return null;
+    try {
+      return JSON.parse(saved);
+    } catch {
+      return null;
+    }
+  };
+
+  const buildTripQS = (t) => {
+    const qs = new URLSearchParams();
+    qs.set("pickup_location", t?.pickup_location || "");
+    qs.set("drop_location", t?.drop_location || "");
+    qs.set("start_date", t?.start_date || "");
+    qs.set("start_time", t?.start_time || "");
+    qs.set("end_date", t?.end_date || "");
+    qs.set("booking_mode", (t?.booking_mode || "RENTAL").toUpperCase());
+    return qs.toString();
+  };
+
+  const goToDetails = (carId) => {
+    const t = getTripData();
+    if (t?.pickup_location && t?.drop_location && t?.start_date && t?.end_date) {
+      navigate(`/cars/${carId}?${buildTripQS(t)}`);
+    } else {
+      navigate(`/cars/${carId}`);
+    }
+  };
+
   // Read trip from URL OR localStorage
   useEffect(() => {
     const qs = new URLSearchParams(location.search);
 
-    const t = {
-      pickup_location: qs.get("pickup_location") || "",
-      drop_location: qs.get("drop_location") || "",
-      start_date: qs.get("start_date") || "",
-      start_time: qs.get("start_time") || "",
-      end_date: qs.get("end_date") || "",
-    };
+const t = {
+  pickup_location: qs.get("pickup_location") || "",
+  drop_location: qs.get("drop_location") || "",
+  start_date: qs.get("start_date") || "",
+  start_time: qs.get("start_time") || "",
+  end_date: qs.get("end_date") || "",
+  booking_mode: (qs.get("booking_mode") || "").toUpperCase(), // ✅ ADD
+};
 
     const hasUrlTrip =
       t.pickup_location && t.drop_location && t.start_date && t.end_date;
@@ -284,15 +318,17 @@ const CarsPage = () => {
       return;
     }
 
-    navigate(
-      `/review-booking?car_id=${car.id}` +
-        `&pickup_location=${encodeURIComponent(t.pickup_location)}` +
-        `&drop_location=${encodeURIComponent(t.drop_location)}` +
-        `&start_date=${encodeURIComponent(t.start_date)}` +
-        `&start_time=${encodeURIComponent(t.start_time || "")}` +
-        `&end_date=${encodeURIComponent(t.end_date)}`,
-      { state: { car } }
-    );
+  navigate(
+  `/review-booking?car_id=${car.id}` +
+    `&pickup_location=${encodeURIComponent(t.pickup_location)}` +
+    `&drop_location=${encodeURIComponent(t.drop_location)}` +
+    `&start_date=${encodeURIComponent(t.start_date)}` +
+    `&start_time=${encodeURIComponent(t.start_time || "")}` +
+    `&end_date=${encodeURIComponent(t.end_date)}` +
+    `&booking_mode=${encodeURIComponent((t.booking_mode || "RENTAL").toUpperCase())}`, // ✅ ADD
+  { state: { car } }
+);
+
   };
 
   return (
@@ -375,9 +411,8 @@ const CarsPage = () => {
 
             {/* FILTER GRID */}
             <div
-              className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 ${
-                showFilters ? "grid" : "hidden"
-              } lg:grid`}
+              className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 ${showFilters ? "grid" : "hidden"
+                } lg:grid`}
             >
               {/* Location */}
               <div className="lg:col-span-1">
@@ -469,11 +504,10 @@ const CarsPage = () => {
                 <button
                   onClick={clearFilters}
                   disabled={activeFiltersCount === 0 && !searchQuery}
-                  className={`w-full px-4 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 ${
-                    activeFiltersCount > 0 || searchQuery
+                  className={`w-full px-4 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 ${activeFiltersCount > 0 || searchQuery
                       ? "bg-cyan-100 text-cyan-600 hover:bg-cyan-200"
                       : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                  }`}
+                    }`}
                 >
                   <X className="w-5 h-5" />
                   <span>Clear</span>
@@ -500,9 +534,8 @@ const CarsPage = () => {
             <p className="text-gray-600 mt-1">
               {loading
                 ? "Loading..."
-                : `${filteredCars.length} vehicle${
-                    filteredCars.length !== 1 ? "s" : ""
-                  } found`}
+                : `${filteredCars.length} vehicle${filteredCars.length !== 1 ? "s" : ""
+                } found`}
             </p>
           </div>
           <div className="hidden md:flex items-center gap-4">
@@ -535,10 +568,9 @@ const CarsPage = () => {
                 <div
                   key={car.id}
                   className={`car-card group bg-white rounded-3xl overflow-hidden shadow-md transition-all duration-500 border border-gray-100
-                    ${
-                      isAvailable
-                        ? "hover:shadow-2xl hover:-translate-y-2"
-                        : "opacity-60"
+                    ${isAvailable
+                      ? "hover:shadow-2xl hover:-translate-y-2"
+                      : "opacity-60"
                     }`}
                 >
                   {/* IMAGE */}
@@ -565,19 +597,29 @@ const CarsPage = () => {
 
                     <button
                       onClick={() => toggleFavorite(car.id)}
-                      className={`absolute top-4 right-4 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 backdrop-blur-md border ${
-                        isFavorite
+                      className={`absolute top-4 right-4 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 backdrop-blur-md border ${isFavorite
                           ? "bg-pink-500 border-pink-500 text-white scale-110"
                           : "bg-white/80 border-white/50 text-gray-700 hover:bg-white hover:scale-110"
-                      }`}
+                        }`}
                     >
                       <Heart
-                        className={`w-5 h-5 ${
-                          isFavorite ? "fill-current" : ""
-                        }`}
+                        className={`w-5 h-5 ${isFavorite ? "fill-current" : ""
+                          }`}
                       />
                     </button>
+                    {/* Hover button (View Details) ✅ */}
+                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-4 transform transition-all duration-500 translate-y-full group-hover:translate-y-0 opacity-0 group-hover:opacity-100">
+                      <button
+                        onClick={() => goToDetails(car.id)}
+                        className="w-full bg-white text-gray-900 font-bold py-2.5 rounded-lg hover:bg-gray-100 transition-colors duration-300 flex items-center justify-center gap-2"
+                        type="button"
+                      >
+                        View Details <ArrowRight className="w-4 h-4" />
+                      </button>
+                    </div>
+
                   </div>
+
 
                   {/* CONTENT */}
                   <div className="p-5 space-y-4">
@@ -647,10 +689,9 @@ const CarsPage = () => {
                       disabled={!isAvailable}
                       onClick={() => isAvailable && handleBookNow(car)}
                       className={`w-full font-bold py-4 rounded-2xl transition-all duration-300 shadow-xl flex items-center justify-center gap-3
-                        ${
-                          isAvailable
-                            ? "bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-700 hover:to-teal-700 text-white hover:shadow-2xl transform hover:scale-105"
-                            : "bg-gray-200 text-gray-500 cursor-not-allowed opacity-70"
+                        ${isAvailable
+                          ? "bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-700 hover:to-teal-700 text-white hover:shadow-2xl transform hover:scale-105"
+                          : "bg-gray-200 text-gray-500 cursor-not-allowed opacity-70"
                         }`}
                     >
                       {isAvailable ? "Book Now" : "Not Available"}

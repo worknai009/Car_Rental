@@ -8,16 +8,15 @@ const ReviewBookingPage = () => {
   const location = useLocation();
   const [searchParams] = useSearchParams();
 
-  // ✅ NEVER name it car_id in React component
   const carId = searchParams.get("car_id");
 
+  const bookingModeFromUrl = (searchParams.get("booking_mode") || "RENTAL").toUpperCase();
   const pickupFromUrl = searchParams.get("pickup_location") || "";
   const dropFromUrl = searchParams.get("drop_location") || "";
   const startDateFromUrl = searchParams.get("start_date") || "";
-  const startTimeFromUrl = searchParams.get("start_time") || "";
+  const startTimeFromUrl = searchParams.get("start_time") || ""; // ✅ already present
   const endDateFromUrl = searchParams.get("end_date") || "";
 
-  // car can come from navigate state (CarsPage), but it will be LOST on refresh
   const carFromState = location.state?.car || null;
 
   const [car, setCar] = useState(carFromState);
@@ -25,24 +24,40 @@ const ReviewBookingPage = () => {
   const [saving, setSaving] = useState(false);
 
   const [form, setForm] = useState({
+    booking_mode: bookingModeFromUrl,     // ✅ added
+    start_time: startTimeFromUrl,         // ✅ added
     pickup_location: pickupFromUrl,
     drop_location: dropFromUrl,
     start_date: startDateFromUrl,
-    end_date: endDateFromUrl,
+    end_date:
+      bookingModeFromUrl === "TRANSFER"
+        ? startDateFromUrl
+        : endDateFromUrl,
   });
 
-  // Keep form synced if URL changes
+  // Sync when URL changes
   useEffect(() => {
     setForm({
+      booking_mode: bookingModeFromUrl,
+      start_time: startTimeFromUrl,
       pickup_location: pickupFromUrl,
       drop_location: dropFromUrl,
       start_date: startDateFromUrl,
-      end_date: endDateFromUrl,
+      end_date:
+        bookingModeFromUrl === "TRANSFER"
+          ? startDateFromUrl
+          : endDateFromUrl,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pickupFromUrl, dropFromUrl, startDateFromUrl, endDateFromUrl]);
+  }, [
+    bookingModeFromUrl,
+    startTimeFromUrl,
+    pickupFromUrl,
+    dropFromUrl,
+    startDateFromUrl,
+    endDateFromUrl,
+  ]);
 
-  // ✅ If user opens /review-booking directly (or refresh), fetch car by id
   useEffect(() => {
     const fetchCar = async () => {
       if (carFromState) return;
@@ -63,20 +78,20 @@ const ReviewBookingPage = () => {
     fetchCar();
   }, [carId, carFromState]);
 
-  // Guard: if car_id missing
   useEffect(() => {
-    if (!carId) {
-      navigate("/cars", { replace: true });
-    }
+    if (!carId) navigate("/cars", { replace: true });
   }, [carId, navigate]);
 
   const days = useMemo(() => {
+    // ✅ Transfer always 1 day
+    if (form.booking_mode === "TRANSFER") return 1;
+
     if (!form.start_date || !form.end_date) return 1;
     const s = new Date(form.start_date);
     const e = new Date(form.end_date);
     const diff = Math.ceil((e - s) / (1000 * 60 * 60 * 24)) + 1;
     return diff > 0 ? diff : 1;
-  }, [form.start_date, form.end_date]);
+  }, [form.start_date, form.end_date, form.booking_mode]);
 
   const total = useMemo(() => {
     const price = Number(car?.price_per_day || 0);
@@ -85,33 +100,49 @@ const ReviewBookingPage = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setForm((p) => ({ ...p, [name]: value }));
+
+    setForm((p) => {
+      const next = { ...p, [name]: value };
+
+      // ✅ if Transfer and start_date changed, keep end_date same as start_date
+      if (next.booking_mode === "TRANSFER" && name === "start_date") {
+        next.end_date = value;
+      }
+
+      return next;
+    });
   };
 
   const handleConfirmBooking = async () => {
     if (!carId) return alert("Car ID missing!");
-    if (!form.pickup_location || !form.drop_location || !form.start_date || !form.end_date) {
-      return alert("Please fill all booking details.");
+
+    // ✅ required fields
+    if (!form.pickup_location || !form.drop_location || !form.start_date) {
+      return alert("Please fill booking details.");
+    }
+
+    // ✅ rental requires end_date
+    if (form.booking_mode === "RENTAL" && !form.end_date) {
+      return alert("Please select end date.");
     }
 
     try {
       setSaving(true);
 
-      // ✅ Backend expects:
-      // car_id, pickup_location, drop_location, start_date, end_date
+      // ✅ PAYLOAD MUST BE HERE (ReviewBookingPage.jsx)
       const payload = {
         car_id: Number(carId),
         pickup_location: form.pickup_location,
         drop_location: form.drop_location,
         start_date: form.start_date,
-        end_date: form.end_date,
+        end_date: form.booking_mode === "TRANSFER" ? form.start_date : form.end_date,
+        booking_mode: form.booking_mode,
+        start_time: form.start_time || null,
       };
 
       const res = await userApi.post("/bookings/booking", payload);
 
       alert(`Booking Created ✅\nBooking ID: ${res.data?.booking_id || ""}`);
-
-      // ✅ go to My Bookings (recommended)
       navigate("/my-bookings");
     } catch (err) {
       console.error("Create booking error:", err);
@@ -137,9 +168,7 @@ const ReviewBookingPage = () => {
       <div className="min-h-screen pt-24 flex items-center justify-center bg-gray-50 px-4">
         <div className="bg-white p-6 rounded-2xl shadow max-w-md w-full text-center">
           <h2 className="text-xl font-black text-gray-900 mb-2">Car not found</h2>
-          <p className="text-gray-600 mb-4">
-            This car may be removed or the URL is invalid.
-          </p>
+          <p className="text-gray-600 mb-4">This car may be removed or the URL is invalid.</p>
           <button
             onClick={() => navigate("/cars")}
             className="px-6 py-3 rounded-xl bg-gray-900 text-white font-bold"
@@ -156,7 +185,7 @@ const ReviewBookingPage = () => {
   return (
     <div className="min-h-screen bg-gray-50 pt-24 pb-10 px-4">
       <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* LEFT: Car Card */}
+        {/* LEFT */}
         <div className="bg-white rounded-3xl shadow border overflow-hidden">
           <div className="h-60 bg-gray-100">
             {imageUrl ? (
@@ -200,11 +229,16 @@ const ReviewBookingPage = () => {
           </div>
         </div>
 
-        {/* RIGHT: Booking Form */}
+        {/* RIGHT */}
         <div className="bg-white rounded-3xl shadow border p-6 space-y-5">
-          <div className="flex items-center gap-2">
-            <Car className="w-6 h-6 text-cyan-600" />
-            <h2 className="text-2xl font-black text-gray-900">Review Booking</h2>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Car className="w-6 h-6 text-cyan-600" />
+              <h2 className="text-2xl font-black text-gray-900">Review Booking</h2>
+            </div>
+            <span className="text-xs font-black px-3 py-1 rounded-full bg-gray-100">
+              {form.booking_mode}
+            </span>
           </div>
 
           <div className="grid grid-cols-1 gap-4">
@@ -215,7 +249,6 @@ const ReviewBookingPage = () => {
                 value={form.pickup_location}
                 onChange={handleChange}
                 className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 bg-gray-50 focus:bg-white focus:border-cyan-500 outline-none"
-                placeholder="Enter pickup location"
               />
             </div>
 
@@ -226,15 +259,12 @@ const ReviewBookingPage = () => {
                 value={form.drop_location}
                 onChange={handleChange}
                 className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 bg-gray-50 focus:bg-white focus:border-cyan-500 outline-none"
-                placeholder="Enter drop location"
               />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">
-                  Start Date
-                </label>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Start Date</label>
                 <input
                   type="date"
                   name="start_date"
@@ -245,24 +275,22 @@ const ReviewBookingPage = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">
-                  End Date
-                </label>
+                <label className="block text-sm font-bold text-gray-700 mb-2">End Date</label>
                 <input
                   type="date"
                   name="end_date"
-                  value={form.end_date}
+                  value={form.booking_mode === "TRANSFER" ? form.start_date : form.end_date}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 bg-gray-50 focus:bg-white focus:border-cyan-500 outline-none"
+                  disabled={form.booking_mode === "TRANSFER"}
+                  className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 bg-gray-50 focus:bg-white focus:border-cyan-500 outline-none disabled:opacity-60"
                 />
               </div>
             </div>
 
-            {/* (Optional) show start time from URL */}
-            {startTimeFromUrl ? (
+            {form.start_time ? (
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <Calendar className="w-4 h-4" />
-                Start Time: <span className="font-bold text-gray-900">{startTimeFromUrl}</span>
+                Start Time: <span className="font-bold text-gray-900">{form.start_time}</span>
               </div>
             ) : null}
           </div>
