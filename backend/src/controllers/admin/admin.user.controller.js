@@ -1,7 +1,7 @@
 const { exe } = require("../../config/db");
 
 exports.getUsers = async (req, res) => {
-  const users = await exe("SELECT id,name,email,created_at FROM users");
+  const users = await exe("SELECT id,name,email,phone,created_at FROM users");
   res.json(users);
 };
 

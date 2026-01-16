@@ -29,6 +29,9 @@ import AddCategory from "./pages/admin/AddCategory";
 import EditCar from "./pages/admin/EditCar";
 import ContactList from "./pages/admin/ContactList";
 import CancelRequests from "./pages/admin/CancelRequests";
+import FeedbackList from "./pages/admin/FeedbackList.jsx";
+
+
 
 // ADMIN – CAR MANAGEMENT
 import AddCar from "./pages/admin/AddCar";
@@ -40,6 +43,22 @@ import Bar from "./pages/admin/charts/Bar";
 import Geography from "./pages/admin/charts/Geography";
 import Line from "./pages/admin/charts/Line";
 import Pie from "./pages/admin/charts/Pie";
+
+
+// ✅ Car Register Panel
+import { CarRegisterAuthProvider } from "./components/carRegister/CarRegisterAuthContext.jsx";
+import CarRegisterProtectedRoute from "./components/carRegister/CarRegisterProtectedRoute.jsx";
+import CarRegisterLayout from "./components/carRegister/CarRegisterLayout.jsx";
+
+import CarRegisterLogin from "./pages/carRegister/CarRegisterLogin.jsx";
+import CarRegisterRegister from "./pages/carRegister/CarRegisterRegister.jsx";
+import CarRegisterDashboard from "./pages/carRegister/CarRegisterDashboard.jsx";
+import CarRegisterCars from "./pages/carRegister/CarRegisterCars.jsx";
+import CarRegisterAddCar from "./pages/carRegister/CarRegisterAddCar.jsx";
+import CarRegisterBookings from "./pages/carRegister/CarRegisterBookings.jsx";
+import CarRegisterProfile from "./pages/carRegister/CarRegisterProfile.jsx";
+
+
 
 // ✅ Admin Protect
 const AdminPrivateRoute = ({ children }) => {
@@ -71,24 +90,10 @@ const App = () => {
         <Route path="/register" element={<Register />} />
 
         {/* ✅ PROTECTED (as you want) */}
-        <Route
-          path="/cars"
-          element={
-            <UserPrivateRoute>
-              <Car />
-            </UserPrivateRoute>
-          }
-        />
+        <Route path="/cars" element={<Car />} />
 
-        <Route
-          path="/cars/:id"
-          element={
-            <UserPrivateRoute>
-              <CarDetails />
-            </UserPrivateRoute>
-          }
-        />
-        
+        <Route path="/cars/:id" element={<CarDetails />} />
+
 
 
         <Route
@@ -144,9 +149,34 @@ const App = () => {
         <Route path="pie" element={<Pie />} />
         <Route path="contacts" element={<ContactList />} />
         <Route path="/admin/cancel-requests" element={<CancelRequests />} />
+        <Route path="feedback" element={<FeedbackList />} />
       </Route>
 
+
+      {/* ✅ Car Register Auth (public) */}
+      <Route path="/car-register/login" element={  <CarRegisterAuthProvider>  <CarRegisterLogin /> </CarRegisterAuthProvider>}/>
+
+      <Route path="/car-register/register" element={ <CarRegisterAuthProvider>  <CarRegisterRegister /> </CarRegisterAuthProvider> } />
+
+      {/* ✅ Car Register Panel (protected) */}
+      <Route element={ <CarRegisterAuthProvider> <CarRegisterProtectedRoute />  </CarRegisterAuthProvider>}>
+
+        <Route path="/car-register" element={<CarRegisterLayout />}>
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={<CarRegisterDashboard />} />
+          <Route path="cars" element={<CarRegisterCars />} />
+          <Route path="cars/add" element={<CarRegisterAddCar />} />
+          <Route path="bookings" element={<CarRegisterBookings />} />
+          <Route path="profile" element={<CarRegisterProfile />} />
+        </Route>
+      </Route>
+
+
+
+
       {/* ================= 404 ================= */}
+
+
       <Route
         path="*"
         element={

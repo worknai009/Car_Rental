@@ -2,16 +2,16 @@ const { exe } = require("../../config/db");
 
 exports.createContact = async (req, res) => {
   try {
-    const { name, email, subject, message } = req.body;
+    const { name, email, phone,subject, message } = req.body;
 
     // basic validation
-    if (!name || !email || !subject || !message) {
+    if (!name || !email || !phone || !subject || !message) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
     await exe(
-      "INSERT INTO contact (name,email,subject,message) VALUES (?,?,?,?)",
-      [name, email, subject, message]
+      "INSERT INTO contact (name,email,phone,subject,message) VALUES (?,?,?,?,?)",
+      [name, email, phone, subject, message]
     );
 
     return res.json({ message: "Message sent successfully" });

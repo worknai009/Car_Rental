@@ -329,7 +329,7 @@ const Login = () => {
               <p className="form-element text-center text-gray-600 mt-4 text-sm">
                 Don't have an account?{" "}
                 <a
-                  href="#"
+                  href="/register"
                   className="text-cyan-600 font-bold hover:text-cyan-700 hover:underline"
                 >
                   Create Account

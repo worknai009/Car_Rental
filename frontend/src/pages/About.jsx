@@ -400,13 +400,18 @@ const About = () => {
             rental service
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <a href="/cars">
             <button className="bg-white text-cyan-600 px-8 py-4 rounded-xl font-bold hover:bg-gray-100 transition-all transform hover:scale-105 flex items-center justify-center gap-2">
               Browse Cars
               <Car className="w-5 h-5" />
             </button>
+            </a>
+
+            <a href="/contact">
             <button className="bg-black/20 backdrop-blur-sm border-2 border-white/30 px-8 py-4 rounded-xl font-bold hover:bg-black/30 transition-all transform hover:scale-105">
               Contact Us
             </button>
+            </a>
           </div>
         </div>
       </div>

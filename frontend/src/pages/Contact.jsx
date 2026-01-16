@@ -64,6 +64,7 @@ const handleSubmit = async (e) => {
     const payload = {
       name: formData.name,
       email: formData.email,
+      phone: formData.phone,
       subject: formData.subject,
       message: formData.message,
     };

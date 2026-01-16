@@ -1,16 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import userApi from "../utils/userApi";
 import { XCircle, FileText, X, Star } from "lucide-react";
 
 const MyBookings = () => {
-  const navigate = useNavigate();
-
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  // today (yyyy-mm-dd)
-  const today = new Date().toISOString().slice(0, 10);
 
   // ----------------------------
   // Cancel modal state
@@ -76,34 +70,6 @@ const MyBookings = () => {
     }
   };
 
-  // ✅ can complete ride only if end_date <= today and not cancelled/completed
-  const canComplete = (b) => {
-    const st = String(b.status || "").toUpperCase();
-    if (st === "CANCELLED" || st === "COMPLETED" || st === "CANCEL_REQUESTED")
-      return false;
-    return String(b.end_date || "") <= today;
-  };
-
-  // ✅ Complete Ride -> PATCH -> open feedback modal
-  const handleCompleteRide = async (booking) => {
-    if (!booking?.id) return;
-
-    try {
-      await userApi.patch(`/bookings/${booking.id}/complete`);
-
-      // ✅ open feedback modal automatically
-      setFbBooking(booking);
-      setFbRating(5);
-      setFbMessage("");
-      setOpenFeedback(true);
-
-      // refresh list so status becomes COMPLETED
-      fetchBookings();
-    } catch (e) {
-      alert(e?.response?.data?.message || "Failed to complete ride");
-    }
-  };
-
   // ✅ Submit Feedback (ONLY booking_id + rating + message)
   const submitFeedback = async () => {
     if (!fbBooking?.id) return;
@@ -164,6 +130,16 @@ const MyBookings = () => {
     }
   };
 
+  // ✅ robust car image getter (supports different API shapes)
+  const getCarImage = (b) =>
+    b?.car_image ||
+    b?.carImage ||
+    b?.car?.image ||
+    b?.car?.image_url ||
+    (Array.isArray(b?.car?.images) ? b.car.images[0] : null) ||
+    b?.image_url ||
+    null;
+
   return (
     <div className="min-h-screen bg-gray-50 pt-24 pb-10 px-4">
       <div className="max-w-5xl mx-auto">
@@ -179,28 +155,42 @@ const MyBookings = () => {
           <div className="space-y-4">
             {bookings.map((b) => {
               const st = String(b.status || "").toUpperCase();
+              const img = getCarImage(b);
 
               return (
                 <div key={b.id} className="bg-white p-6 rounded-2xl shadow border">
                   <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <div className="text-lg font-bold text-gray-900">
-                        Booking #{b.id} • Car ID: {b.car_id}
-                      </div>
-                      <div className="text-sm text-gray-600 mt-1">
-                        {b.pickup_location} → {b.drop_location}
-                      </div>
-                      <div className="text-sm text-gray-600">
-                        {b.start_date} to {b.end_date}
-                      </div>
-                      <div className="text-sm font-semibold text-gray-900 mt-2">
-                        Total: ₹{b.total_amount}
-                      </div>
-                      <div className="text-xs mt-1">
-                        Status: <span className="font-bold">{st || "CONFIRMED"}</span>
+                    {/* ✅ Car Image */}
+                    <div className="flex items-start gap-4">
+
+
+                      {/* Booking Details */}
+                      <div>
+                        <div className="text-lg font-bold text-gray-900">
+                          Booking #{b.id} • Car ID: {b.car_id}
+                        </div>
+
+                        <div className="text-sm text-gray-600 mt-1">
+                          {b.pickup_location} → {b.drop_location}
+                        </div>
+
+                        {/* ✅ Date slice(0,10) */}
+                        <div className="text-sm text-gray-600">
+                          {String(b.start_date || "").slice(0, 10)} to{" "}
+                          {String(b.end_date || "").slice(0, 10)}
+                        </div>
+
+                        <div className="text-sm font-semibold text-gray-900 mt-2">
+                          Total: ₹{b.total_amount}
+                        </div>
+
+                        <div className="text-xs mt-1">
+                          Status: <span className="font-bold">{st || "CONFIRMED"}</span>
+                        </div>
                       </div>
                     </div>
 
+                    {/* Actions */}
                     <div className="flex flex-col gap-2">
                       <button
                         onClick={() => downloadInvoice(b.id)}
@@ -210,30 +200,25 @@ const MyBookings = () => {
                         Invoice PDF
                       </button>
 
-                      <button
-                        onClick={() => openCancelForm(b)}
-                        disabled={st === "CANCELLED" || st === "CANCEL_REQUESTED"}
-                        className={`px-4 py-2 rounded-xl font-bold flex items-center gap-2 ${
-                          st === "CANCELLED" || st === "CANCEL_REQUESTED"
-                            ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-                            : "bg-orange-100 text-orange-700"
-                        }`}
-                      >
-                        <XCircle className="w-4 h-4" />
-                        {st === "CANCEL_REQUESTED" ? "Requested" : "Cancel"}
-                      </button>
-
-                      {/* ✅ Complete Ride Button */}
-                      {canComplete(b) && (
+                      {/* ✅ Hide Cancel button when COMPLETED */}
+                      {st !== "COMPLETED" && (
                         <button
-                          onClick={() => handleCompleteRide(b)}
-                          className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+                          onClick={() => openCancelForm(b)}
+                          disabled={st === "CANCELLED" || st === "CANCEL_REQUESTED"}
+                          className={`px-4 py-2 rounded-xl font-bold flex items-center gap-2 ${st === "CANCELLED" || st === "CANCEL_REQUESTED"
+                              ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                              : "bg-orange-100 text-orange-700"
+                            }`}
                         >
-                          Complete Ride
+                          <XCircle className="w-4 h-4" />
+                          {st === "CANCEL_REQUESTED" ? "Requested" : "Cancel"}
                         </button>
                       )}
 
-                      {/* Optional: if already completed, allow feedback again */}
+
+                      {/* ✅ Complete Ride button removed */}
+
+                      {/* Optional: if already completed, allow feedback */}
                       {st === "COMPLETED" && (
                         <button
                           onClick={() => {
@@ -332,7 +317,6 @@ const MyBookings = () => {
             </div>
 
             <div className="p-5 space-y-4">
-              {/* Rating */}
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">
                   Rating
@@ -343,16 +327,14 @@ const MyBookings = () => {
                       key={n}
                       type="button"
                       onClick={() => setFbRating(n)}
-                      className={`w-10 h-10 rounded-xl border flex items-center justify-center ${
-                        fbRating >= n
+                      className={`w-10 h-10 rounded-xl border flex items-center justify-center ${fbRating >= n
                           ? "bg-yellow-100 border-yellow-300"
                           : "bg-gray-50 border-gray-200"
-                      }`}
+                        }`}
                     >
                       <Star
-                        className={`w-5 h-5 ${
-                          fbRating >= n ? "text-yellow-500 fill-current" : "text-gray-400"
-                        }`}
+                        className={`w-5 h-5 ${fbRating >= n ? "text-yellow-500 fill-current" : "text-gray-400"
+                          }`}
                       />
                     </button>
                   ))}
@@ -360,7 +342,6 @@ const MyBookings = () => {
                 </div>
               </div>
 
-              {/* Message */}
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">
                   Message

@@ -199,8 +199,8 @@ const Hero = () => {
                     onChange={(e) => setBookingMode(e.target.value)}
                     className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl"
                   >
-                    <option value="RENTAL">Rental</option>
-                    <option value="TRANSFER">Transfer (One-way)</option>
+                    <option value="RENTAL">Rental     (Two-way)</option>
+                    <option value="TRANSFER">Transfer   (One-way)</option>
                   </select>
                 </div>
 

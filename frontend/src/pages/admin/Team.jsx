@@ -38,33 +38,33 @@ const Team = () => {
     fetchUsers();
   }, []);
 
-  const columns = [
-    { field: "id", headerName: "ID", width: 90 },
-    { field: "name", headerName: "Name", flex: 1, minWidth: 160 },
-    { field: "email", headerName: "Email", flex: 1, minWidth: 220 },
-    {
-      field: "created_at",
-      headerName: "Created At",
-      flex: 1,
-      minWidth: 180,
-      valueGetter: (params) => {
-        const v = params.row?.created_at;
-        if (!v) return "";
-        return new Date(v).toLocaleString();
-      },
-    },
-    {
-      field: "actions",
-      headerName: "Actions",
-      width: 110,
-      sortable: false,
-      renderCell: (params) => (
-        <IconButton onClick={() => deleteUser(params.row.id)}>
-          <Trash2 size={18} />
-        </IconButton>
-      ),
-    },
-  ];
+const columns = [
+  { field: "id", headerName: "ID", width: 90 },
+
+  { field: "name", headerName: "Name", flex: 1, minWidth: 160 },
+
+  { field: "email", headerName: "Email", flex: 1, minWidth: 220 },
+
+  {
+    field: "phone",
+    headerName: "Phone",
+    flex: 1,
+    minWidth: 160,
+    renderCell: (params) => params.value || "-",
+  },
+  {
+    field: "actions",
+    headerName: "Actions",
+    width: 110,
+    sortable: false,
+    renderCell: (params) => (
+      <IconButton onClick={() => deleteUser(params.row.id)}>
+        <Trash2 size={18} />
+      </IconButton>
+    ),
+  },
+];
+
 
   return (
     <Box m="20px">

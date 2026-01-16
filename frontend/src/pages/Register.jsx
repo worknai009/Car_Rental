@@ -10,6 +10,7 @@ import {
   User,
   Car,
   Eye,
+  Phone,
   EyeOff,
   ArrowRight,
   CheckCircle2,
@@ -33,6 +34,7 @@ const Register = () => {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
+    phone: "",
     password: "",
     agreeTerms: false,
   });
@@ -77,42 +79,43 @@ const Register = () => {
     setFormData({ ...formData, [name]: type === "checkbox" ? checked : value });
   };
 
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  setError("");
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
 
-  if (!formData.agreeTerms) {
-    setError("Please accept Terms & Conditions");
-    return;
-  }
+    if (!formData.agreeTerms) {
+      setError("Please accept Terms & Conditions");
+      return;
+    }
 
-  try {
-    setLoading(true);
+    try {
+      setLoading(true);
 
-    const res = await axios.post(
-      "http://localhost:1000/auth/register",
-      {
-        name: formData.name,
-        email: formData.email,
-        password: formData.password,
-      },
-      {
-        headers: {
-          "Content-Type": "application/json",
+      const res = await axios.post(
+        "http://localhost:1000/auth/register",
+        {
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          password: formData.password,
         },
-      }
-    );
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
-    localStorage.setItem("token", res.data.token);
-    localStorage.setItem("user", JSON.stringify(res.data.user));
+      localStorage.setItem("token", res.data.token);
+      localStorage.setItem("user", JSON.stringify(res.data.user));
 
-    navigate("/login");
-  } catch (err) {
-    setError(err.response?.data?.message || "Registration failed");
-  } finally {
-    setLoading(false);
-  }
-};
+      navigate("/login");
+    } catch (err) {
+      setError(err.response?.data?.message || "Registration failed");
+    } finally {
+      setLoading(false);
+    }
+  };
 
 
 
@@ -342,6 +345,26 @@ const handleSubmit = async (e) => {
                         />
                       </div>
                     </div>
+
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">
+                        Phone Number *
+                      </label>
+                      <div className="relative">
+                        <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                        <input
+                          type="tel"
+                          name="phone"
+                          value={formData.phone}
+                          onChange={handleChange}
+                          placeholder="9876543210"
+                          className="w-full pl-12 pr-4 py-3.5 text-sm bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-cyan-500 focus:bg-white focus:outline-none transition-all text-gray-900 font-medium"
+                          required
+                          pattern="[0-9]{10,15}"
+                        />
+                      </div>
+                    </div>
+
                   </div>
 
                   {currentStep >= 2 && (

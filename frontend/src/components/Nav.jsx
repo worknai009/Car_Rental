@@ -1,10 +1,23 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { Car, Menu, LogIn, Home, Package, Info, Mail, Bookmark } from "lucide-react";
+import {
+  Car,
+  LogIn,
+  Home,
+  Package,
+  Info,
+  Mail,
+  Bookmark,
+  ChevronDown,
+} from "lucide-react";
 
 const Nav = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [activeItem, setActiveItem] = useState("home");
+
+  // Login dropdown
+  const [isLoginOpen, setIsLoginOpen] = useState(false);
+  const loginRef = useRef(null);
 
   const menuItems = [
     { name: "Home", path: "/", icon: Home },
@@ -12,8 +25,30 @@ const Nav = () => {
     { name: "My Bookings", path: "/my-bookings", icon: Bookmark },
     { name: "About", path: "/about", icon: Info },
     { name: "Contact", path: "/contact", icon: Mail },
-    
   ];
+
+  // ✅ Change paths if your app uses different routes
+  const loginOptions = [
+    { name: "User Login", path: "/login" },
+    { name: "Admin Login", path: "/admin/login" },
+    { name: "Car Register Login", path: "/car-register/login" },
+  ];
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (loginRef.current && !loginRef.current.contains(e.target)) {
+        setIsLoginOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Close login dropdown if mobile menu opens
+  useEffect(() => {
+    if (isMenuOpen) setIsLoginOpen(false);
+  }, [isMenuOpen]);
 
   return (
     <>
@@ -83,34 +118,44 @@ const Nav = () => {
 
             {/* Right Section - Auth Buttons */}
             <div className="flex items-center gap-3">
-              {/* Login - Outlined Glass Button */}
-              <Link
-                to="/login"
-                className="hidden md:flex relative px-5 py-2.5 rounded-2xl bg-white/40 backdrop-blur-md border-2 border-gray-300/50 text-gray-700 font-semibold overflow-hidden group hover:border-cyan-400 transition-all duration-500 hover:shadow-xl"
-              >
-                <span className="relative z-10 flex items-center gap-2 group-hover:text-cyan-600 transition-colors whitespace-nowrap">
-                  <LogIn className="h-4 w-4" />
-                  <span className="hidden sm:inline">Login</span>
-                </span>
-                <span className="absolute inset-0 bg-gradient-to-br from-cyan-50 to-transparent transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left"></span>
-              </Link>
+              {/* ✅ Login Dropdown (Desktop) */}
+              <div className="hidden md:block relative" ref={loginRef}>
+                <button
+                  type="button"
+                  onClick={() => setIsLoginOpen((p) => !p)}
+                  className="relative px-5 py-2.5 rounded-2xl bg-white/40 backdrop-blur-md border-2 border-gray-300/50 text-gray-700 font-semibold overflow-hidden group hover:border-cyan-400 transition-all duration-500 hover:shadow-xl flex items-center gap-2"
+                >
+                  <span className="relative z-10 flex items-center gap-2 group-hover:text-cyan-600 transition-colors whitespace-nowrap">
+                    <LogIn className="h-4 w-4" />
+                    <span className="hidden sm:inline">Login</span>
+                    <ChevronDown
+                      className={`h-4 w-4 transition-transform ${
+                        isLoginOpen ? "rotate-180" : ""
+                      }`}
+                    />
+                  </span>
+                  <span className="absolute inset-0 bg-gradient-to-br from-cyan-50 to-transparent transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left"></span>
+                </button>
 
-              {/* Register - 3D Elevated Button */}
-              <Link
-                to="/register"
-                className="hidden md:flex relative px-6 py-2.5 rounded-2xl bg-gradient-to-br from-cyan-600 via-teal-600 to-cyan-700 text-white font-bold overflow-hidden group shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-500"
-              >
-                <span className="relative z-10 flex items-center gap-2 whitespace-nowrap">
-                  Register
-                  <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-                </span>
+                {isLoginOpen && (
+                  <div className="absolute right-0 mt-3 w-56 rounded-2xl bg-white/90 backdrop-blur-xl shadow-2xl border border-gray-200/60 overflow-hidden z-50">
+                    <div className="p-2">
+                      {loginOptions.map((opt) => (
+                        <Link
+                          key={opt.name}
+                          to={opt.path}
+                          onClick={() => setIsLoginOpen(false)}
+                          className="flex items-center px-4 py-3 rounded-xl text-gray-700 font-semibold hover:bg-cyan-50 hover:text-cyan-700 transition-all"
+                        >
+                          {opt.name}
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
 
-                {/* Shine Effect */}
-                <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></span>
-
-                {/* Bottom Shadow */}
-                <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-3/4 h-1 bg-cyan-600/50 blur-lg group-hover:w-full transition-all duration-500"></span>
-              </Link>
+             
 
               {/* Mobile Menu Button - Morphing Animation */}
               <button
@@ -179,29 +224,35 @@ const Nav = () => {
             })}
           </div>
 
-          {/* Mobile Auth Buttons */}
+          {/* ✅ Mobile Login Options */}
           <div className="mt-8 space-y-3">
-            <Link
-              to="/login"
-              onClick={() => setIsMenuOpen(false)}
-              className="flex items-center justify-center gap-2 px-6 py-4 rounded-2xl bg-white border-2 border-gray-300 text-gray-700 font-semibold hover:border-cyan-400 hover:text-cyan-600 transition-all duration-300"
-              style={{
-                animation: isMenuOpen
-                  ? "slideInRight 0.4s ease-out 0.4s both"
-                  : "none",
-              }}
-            >
-              <LogIn className="h-5 w-5" />
-              Login
-            </Link>
+            {loginOptions.map((opt, i) => (
+              <Link
+                key={opt.name}
+                to={opt.path}
+                onClick={() => setIsMenuOpen(false)}
+                className="flex items-center justify-center gap-2 px-6 py-4 rounded-2xl bg-white border-2 border-gray-300 text-gray-700 font-semibold hover:border-cyan-400 hover:text-cyan-600 transition-all duration-300"
+                style={{
+                  animation: isMenuOpen
+                    ? `slideInRight 0.4s ease-out ${0.4 + i * 0.1}s both`
+                    : "none",
+                }}
+              >
+                <LogIn className="h-5 w-5" />
+                {opt.name}
+              </Link>
+            ))}
 
+            {/* Mobile Register */}
             <Link
               to="/register"
               onClick={() => setIsMenuOpen(false)}
               className="flex items-center justify-center gap-2 px-6 py-4 rounded-2xl bg-gradient-to-r from-cyan-600 to-teal-600 text-white font-bold shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300"
               style={{
                 animation: isMenuOpen
-                  ? "slideInRight 0.4s ease-out 0.5s both"
+                  ? `slideInRight 0.4s ease-out ${
+                      0.4 + loginOptions.length * 0.1
+                    }s both`
                   : "none",
               }}
             >

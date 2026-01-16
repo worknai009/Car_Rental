@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import adminApi from "../../utils/adminApi";
-import { Trash2, Mail, User, MessageSquare, Calendar } from "lucide-react";
+import { Trash2, Mail, User, MessageSquare, Calendar,Phone } from "lucide-react";
 
 const ContactList = () => {
   const [contacts, setContacts] = useState([]);
@@ -93,6 +93,12 @@ const ContactList = () => {
                     <span className="flex items-center gap-2">
                       <Mail className="w-4 h-4" /> {c.email}
                     </span>
+
+                    {c.phone && (
+                      <span className="flex items-center gap-2">
+                        <Phone className="w-4 h-4" /> {c.phone}
+                      </span>
+                    )}
 
                     {c.created_at && (
                       <span className="flex items-center gap-2 text-gray-500">

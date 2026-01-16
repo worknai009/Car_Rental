@@ -52,6 +52,11 @@ const Sidebar = () => {
           Cancal Request
         </MenuItem>
 
+        <MenuItem icon={<Receipt />} component={<Link to="/admin/feedback">Feedback List</Link>
+}>
+          FeedBack List
+        </MenuItem>
+
         <p className="text-xs text-gray-500 px-6 py-2 uppercase">Cars Data</p>
         <MenuItem icon={<Layers />} component={<Link to="/admin/categories/add" />}>
           Add Category

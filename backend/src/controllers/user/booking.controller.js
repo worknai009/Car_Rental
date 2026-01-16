@@ -2,6 +2,68 @@ const bookingService = require("../../services/booking.service");
 const { exe } = require("../../config/db");
 const PDFDocument = require("pdfkit");
 const path = require("path");
+const fs = require("fs");
+// const axios = require("axios");
+
+function getUserId(req) {
+  return req.user?.id || req.user?.user_id || req.user_id || null;
+}
+
+/**
+ * ✅ Supports:
+ * - Absolute Windows path: E:\...\public\file.jpg
+ * - Relative: public/file.jpg, /uploads/file.jpg, uploads/file.jpg, file.jpg
+ */
+function resolveLocalImagePath(raw) {
+  if (!raw) return null;
+
+  const normalized = path.normalize(String(raw).trim());
+
+  // ✅ 1) If it's already an absolute path (E:\... or C:\...) and exists, return directly
+  if (path.isAbsolute(normalized) && fs.existsSync(normalized)) {
+    return normalized;
+  }
+
+  // ✅ 2) If not absolute, try common locations
+  const clean = normalized.replace(/^[/\\]/, ""); // remove leading / or \
+
+  const tryPaths = [
+    path.join(process.cwd(), clean),
+    path.join(process.cwd(), "public", clean),
+    path.join(process.cwd(), "uploads", clean),
+    path.join(process.cwd(), "public", "uploads", clean),
+  ];
+
+  for (const p of tryPaths) {
+    const p2 = path.normalize(p);
+    if (fs.existsSync(p2)) return p2;
+  }
+
+  return null;
+}
+
+/**
+ * ✅ Returns:
+ * - Buffer if URL image
+ * - Absolute local path if local image
+ */
+async function loadImageForPdf(raw) {
+  if (!raw) return null;
+
+  // ✅ URL -> download to Buffer
+  if (/^https?:\/\//i.test(raw)) {
+    const resp = await axios.get(raw, { responseType: "arraybuffer" });
+    return Buffer.from(resp.data);
+  }
+
+  // ✅ local file
+  const localPath = resolveLocalImagePath(raw);
+  if (localPath) return localPath;
+
+  return null;
+}
+
+// ======================== BOOKINGS ========================
 
 exports.createBooking = async (req, res) => {
   try {
@@ -30,7 +92,6 @@ exports.createBooking = async (req, res) => {
     res.status(400).json({ message: err.message || "Booking failed" });
   }
 };
-
 
 exports.getMyBookings = async (req, res) => {
   try {
@@ -73,14 +134,7 @@ exports.deleteBooking = async (req, res) => {
   }
 };
 
-
-
-
-
-
-function getUserId(req) {
-  return req.user?.id || req.user?.user_id || req.user_id || null;
-}
+// ======================== INVOICE PDF (WITH IMAGE) ========================
 
 exports.invoicePdf = async (req, res) => {
   try {
@@ -90,14 +144,22 @@ exports.invoicePdf = async (req, res) => {
     if (!bookingId) return res.status(400).json({ message: "Invalid booking id" });
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
 
+    // ⚠️ IMPORTANT: Use your correct image column name here:
+    // You are using: c.cars_image AS car_image
+    // Keep it if it matches your DB column.
     const rows = await exe(
       `
       SELECT 
         b.*,
-        c.name AS car_name,
-        c.brand AS car_brand
+        c.name  AS car_name,
+        c.brand AS car_brand,
+        c.price_per_day AS car_price_per_day,
+        c.cars_image AS car_image,
+        u.name  AS customer_name,
+        u.email AS customer_email
       FROM bookings b
       LEFT JOIN cars c ON c.id = b.car_id
+      LEFT JOIN users u ON u.id = b.user_id
       WHERE b.id = ? AND b.user_id = ?
       LIMIT 1
       `,
@@ -105,29 +167,26 @@ exports.invoicePdf = async (req, res) => {
     );
 
     if (!rows.length) return res.status(404).json({ message: "Booking not found" });
-
     const b = rows[0];
 
     const safe = (v) => (v === null || v === undefined || v === "" ? "-" : String(v));
     const formatINR = (n) => `₹${Number(n || 0).toLocaleString("en-IN")}`;
-    const niceDate = (d) => {
+    const niceDateTime = (d) => {
       if (!d) return "-";
       const dt = new Date(d);
       if (Number.isNaN(dt.getTime())) return String(d);
-      return dt.toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "2-digit" });
+      return dt.toLocaleString("en-IN", { year: "numeric", month: "short", day: "2-digit" });
     };
 
-    // ✅ Build PDF into memory first (prevents corrupted/half PDFs)
-    const doc = new PDFDocument({ size: "A4", margin: 50 });
+    const doc = new PDFDocument({ size: "A4", margin: 40 });
 
-    // ✅ Optional: use a Unicode font to avoid PDFKit crash on emojis/Indian chars
-    // Put font file here: backend/public/fonts/DejaVuSans.ttf
+    // ✅ Unicode font for ₹ and Indian names
     const fontPath = path.join(process.cwd(), "public", "fonts", "DejaVuSans.ttf");
     try {
       doc.registerFont("u", fontPath);
       doc.font("u");
-    } catch (_) {
-      // fallback to default font
+    } catch (e) {
+      // fallback default font
     }
 
     const chunks = [];
@@ -135,14 +194,9 @@ exports.invoicePdf = async (req, res) => {
 
     doc.on("end", () => {
       const pdfBuffer = Buffer.concat(chunks);
-
       res.setHeader("Content-Type", "application/pdf");
-      res.setHeader(
-        "Content-Disposition",
-        `attachment; filename="invoice-booking-${bookingId}.pdf"`
-      );
+      res.setHeader("Content-Disposition", `attachment; filename="invoice-booking-${bookingId}.pdf"`);
       res.setHeader("Content-Length", pdfBuffer.length);
-
       return res.status(200).send(pdfBuffer);
     });
 
@@ -151,56 +205,122 @@ exports.invoicePdf = async (req, res) => {
       if (!res.headersSent) return res.status(500).json({ message: "PDF generation failed" });
     });
 
-    // ===== SIMPLE CLEAN DESIGN =====
-    doc.fontSize(18).fillColor("#111827").text("WorknAI");
-    doc.fontSize(10).fillColor("#6B7280").text("Booking Invoice");
-    doc.moveDown(0.8);
+    // ================== STYLE HELPERS ==================
+    const pageW = doc.page.width;
+    const margin = 40;
+    const contentW = pageW - margin * 2;
 
-    doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor("#E5E7EB").stroke();
-    doc.moveDown(1);
+    const card = (x, y, w, h, title) => {
+      doc
+        .roundedRect(x, y, w, h, 10)
+        .lineWidth(1)
+        .fillAndStroke("#FFFFFF", "#E5E7EB");
 
-    doc.fontSize(10).fillColor("#111827").text(
-      `Invoice #: INV-${String(bookingId).padStart(5, "0")}`,
-      { align: "right" }
-    );
-    doc.text(`Date: ${new Date().toLocaleDateString("en-IN")}`, { align: "right" });
-    doc.moveDown(1);
+      doc.fontSize(12).fillColor("#111827").text(title, x + 14, y + 12);
+      doc
+        .moveTo(x + 14, y + 32)
+        .lineTo(x + w - 14, y + 32)
+        .strokeColor("#E5E7EB")
+        .stroke();
 
-    doc.fontSize(12).fillColor("#111827").text("Booking Details");
-    doc.moveDown(0.5);
-    doc.fontSize(10).fillColor("#374151");
-    doc.text(`Booking ID: ${safe(b.id)}`);
-    doc.text(`User ID: ${safe(b.user_id)}`);
-    doc.text(`Car: ${safe(`${b.car_brand || ""} ${b.car_name || ""}`.trim()) || `Car ID: ${safe(b.car_id)}`}`);
-    doc.text(`Status: ${safe(b.status || "CONFIRMED")}`);
-    doc.moveDown(0.8);
+      return y + 42;
+    };
 
-    doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor("#E5E7EB").stroke();
-    doc.moveDown(1);
+    const row = (x, y, w, label, value) => {
+      doc.fontSize(10).fillColor("#111827").text(label, x, y);
+      doc.fontSize(10).fillColor("#111827").text(value, x, y, { width: w, align: "right" });
+    };
 
-    doc.fontSize(12).fillColor("#111827").text("Trip");
-    doc.moveDown(0.5);
-    doc.fontSize(10).fillColor("#374151");
-    doc.text(`Pickup: ${safe(b.pickup_location)}`);
-    doc.text(`Drop: ${safe(b.drop_location)}`);
-    doc.text(`Start Date: ${niceDate(b.start_date)}`);
-    doc.text(`End Date: ${niceDate(b.end_date)}`);
-    doc.moveDown(0.8);
-
-    doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor("#E5E7EB").stroke();
-    doc.moveDown(1);
-
-    doc.fontSize(12).fillColor("#111827").text("Payment");
-    doc.moveDown(0.5);
-    doc.fontSize(10).fillColor("#374151");
-    doc.text(`Booking Total: ${formatINR(b.total_amount)}`);
+    // ================== HEADER ==================
+    doc.fontSize(16).fillColor("#111827").text("Car Rental Invoice", { align: "center" });
+    doc.moveDown(0.2);
+    doc.fontSize(10).fillColor("#6B7280").text(`Booking ID: #${bookingId}`, { align: "center" });
     doc.moveDown(0.6);
+
+    // ================== CARD 1: BOOKING ==================
+    let y = doc.y + 10;
+    const x = margin;
+
+    const bookingCardH = 135;
+    let innerY = card(x, y, contentW, bookingCardH, "Booking");
+
+    const leftX = x + 14;
+    const rightW = contentW - 28;
+
+    row(leftX, innerY + 0, rightW, "Status", safe(b.status || "BOOKED"));
+    row(leftX, innerY + 18, rightW, "Total Amount", formatINR(b.total_amount));
+    row(leftX, innerY + 36, rightW, "Start Date", safe(b.start_date));
+    row(leftX, innerY + 54, rightW, "End Date", safe(b.end_date));
+    row(leftX, innerY + 72, rightW, "Pickup", safe(b.pickup_location));
+    row(leftX, innerY + 90, rightW, "Drop", safe(b.drop_location));
+    row(leftX, innerY + 108, rightW, "Created At", niceDateTime(b.created_at));
+
+    y = y + bookingCardH + 15;
+
+    // ================== CARD 2: CUSTOMER ==================
+    const customerCardH = 80;
+    innerY = card(x, y, contentW, customerCardH, "Customer");
+
+    row(leftX, innerY + 0, rightW, "Name", safe(b.customer_name));
+    row(leftX, innerY + 18, rightW, "Email", safe(b.customer_email));
+
+    y = y + customerCardH + 15;
+
+    // ================== CARD 3: CAR ==================
+    const carCardH = 190;
+    innerY = card(x, y, contentW, carCardH, "Car");
+
+    row(leftX, innerY + 0, rightW, "Name", safe(b.car_name));
+    row(leftX, innerY + 18, rightW, "Brand", safe(b.car_brand));
+    row(leftX, innerY + 36, rightW, "Price/Day", formatINR(b.car_price_per_day));
+
+    // ✅ Car image box
+    const imgBoxX = leftX;
+    const imgBoxY = innerY + 60;
+    const imgW = 130;
+    const imgH = 100;
+
+    doc
+      .roundedRect(imgBoxX, imgBoxY, imgW, imgH, 8)
+      .lineWidth(1)
+      .strokeColor("#E5E7EB")
+      .stroke();
+
+    try {
+      // ✅ this supports absolute windows path OR URL
+      const imgSource = await loadImageForPdf(b.car_image);
+
+      // console.log("CAR IMAGE VALUE:", b.car_image);
+      // console.log("IMG SOURCE:", Buffer.isBuffer(imgSource) ? "BUFFER" : imgSource);
+
+      if (imgSource) {
+        doc.image(imgSource, imgBoxX + 6, imgBoxY + 6, {
+          fit: [imgW - 12, imgH - 12],
+          align: "center",
+          valign: "center",
+        });
+      } else {
+        doc.fontSize(9).fillColor("#6B7280").text("No Image", imgBoxX + 45, imgBoxY + 45);
+      }
+    } catch (e) {
+      console.error("Image render error:", e);
+      doc.fontSize(9).fillColor("#6B7280").text("Image not loaded", imgBoxX + 20, imgBoxY + 45);
+    }
+
+    y = y + carCardH + 20;
+
+    // ================== TOTAL ==================
     doc.fontSize(12).fillColor("#111827").text(`Total Payable: ${formatINR(b.total_amount)}`, {
       align: "right",
     });
 
-    doc.moveDown(2);
-    doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor("#E5E7EB").stroke();
+    doc.moveDown(1.5);
+    doc
+      .moveTo(margin, doc.y)
+      .lineTo(pageW - margin, doc.y)
+      .strokeColor("#E5E7EB")
+      .stroke();
+
     doc.moveDown(0.7);
     doc.fontSize(9).fillColor("#6B7280").text(
       "This invoice is generated electronically and is valid without signature.",
@@ -214,6 +334,7 @@ exports.invoicePdf = async (req, res) => {
   }
 };
 
+// ======================== COMPLETE BOOKING ========================
 
 exports.completeBooking = async (req, res) => {
   try {
@@ -223,7 +344,6 @@ exports.completeBooking = async (req, res) => {
     const booking_id = Number(req.params.id);
     if (!booking_id) return res.status(400).json({ message: "Invalid booking id" });
 
-    // only user can complete their booking
     const rows = await exe(
       `SELECT id, status FROM bookings WHERE id=? AND user_id=? LIMIT 1`,
       [booking_id, user_id]
@@ -231,12 +351,14 @@ exports.completeBooking = async (req, res) => {
     if (!rows.length) return res.status(404).json({ message: "Booking not found" });
 
     const st = String(rows[0].status || "").toLowerCase();
-    if (st === "cancelled") return res.status(400).json({ message: "Cancelled booking can't be completed" });
+    if (st === "cancelled") {
+      return res.status(400).json({ message: "Cancelled booking can't be completed" });
+    }
 
-    await exe(
-      `UPDATE bookings SET status='COMPLETED' WHERE id=? AND user_id=?`,
-      [booking_id, user_id]
-    );
+    await exe(`UPDATE bookings SET status='COMPLETED' WHERE id=? AND user_id=?`, [
+      booking_id,
+      user_id,
+    ]);
 
     return res.json({ message: "Ride completed", booking_id });
   } catch (err) {

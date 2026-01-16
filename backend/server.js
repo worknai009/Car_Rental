@@ -5,6 +5,7 @@ const fileUpload = require("express-fileupload");
 
 const user_routes = require("./src/routes/user/index");
 const admin_routes = require("./src/routes/admin/admin.routes");
+const car_register = require("./src/routes/car-register/carRegisterAuth.routes");
 
 const app = express();
 
@@ -24,6 +25,7 @@ app.use("/public", express.static("public"));
 // ROUTES
 app.use("/", user_routes);
 app.use("/admin", admin_routes);
+app.use("/car-register", car_register);
 
 const PORT = process.env.PORT || 1000;
 app.listen(PORT, () => {

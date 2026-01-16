@@ -22,13 +22,8 @@ const Topbar = () => {
   return (
     <div className="h-16 bg-white border-b flex items-center justify-between px-6">
       {/* Search */}
-      <div className="flex bg-gray-100 rounded-md p-1 px-3 items-center w-[320px]">
-        <input
-          type="text"
-          placeholder="Search..."
-          className="bg-transparent border-none outline-none text-sm w-full"
-        />
-        <Search className="w-4 h-4 text-gray-500" />
+      <div className="flex  rounded-md p-1 px-3 items-center w-[320px]">
+       
       </div>
 
       {/* Right */}

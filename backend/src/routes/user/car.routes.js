@@ -17,4 +17,5 @@ router.get("/categories", carCtrl.getCategories);
 router.get("/:id", carCtrl.getCarById);
 router.get("/:id/reviews", carCtrl.getCarReviews);
 
+
 module.exports = router;
