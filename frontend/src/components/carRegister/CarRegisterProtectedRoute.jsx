@@ -14,3 +14,4 @@ const CarRegisterProtectedRoute = () => {
 };
 
 export default CarRegisterProtectedRoute;
+ 

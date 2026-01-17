@@ -33,6 +33,8 @@ const CarsPage = () => {
   // -------------------------
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedLocation, setSelectedLocation] = useState("all"); // CITY
+  const [selectedBadge, setSelectedBadge] = useState("all"); // PLATINUM | GOLD | SILVER
+
   const [selectedFuel, setSelectedFuel] = useState("all");
   const [selectedSeats, setSelectedSeats] = useState("all");
   const [minPrice, setMinPrice] = useState("");
@@ -83,14 +85,14 @@ const CarsPage = () => {
   useEffect(() => {
     const qs = new URLSearchParams(location.search);
 
-const t = {
-  pickup_location: qs.get("pickup_location") || "",
-  drop_location: qs.get("drop_location") || "",
-  start_date: qs.get("start_date") || "",
-  start_time: qs.get("start_time") || "",
-  end_date: qs.get("end_date") || "",
-  booking_mode: (qs.get("booking_mode") || "").toUpperCase(), // ✅ ADD
-};
+    const t = {
+      pickup_location: qs.get("pickup_location") || "",
+      drop_location: qs.get("drop_location") || "",
+      start_date: qs.get("start_date") || "",
+      start_time: qs.get("start_time") || "",
+      end_date: qs.get("end_date") || "",
+      booking_mode: (qs.get("booking_mode") || "").toUpperCase(), // ✅ ADD
+    };
 
     const hasUrlTrip =
       t.pickup_location && t.drop_location && t.start_date && t.end_date;
@@ -147,8 +149,10 @@ const t = {
         selectedLocation !== "all" ||
         selectedFuel !== "all" ||
         selectedSeats !== "all" ||
+        selectedBadge !== "all" ||
         minPrice !== "" ||
         maxPrice !== "";
+
 
       if (!hasFilters) {
         await fetchAllCars();
@@ -159,8 +163,10 @@ const t = {
       if (selectedLocation !== "all") params.city = selectedLocation;
       if (selectedFuel !== "all") params.fuel_type = selectedFuel;
       if (selectedSeats !== "all") params.seats = selectedSeats;
+      if (selectedBadge !== "all") params.badge = selectedBadge;
       if (minPrice !== "") params.min_price = minPrice;
       if (maxPrice !== "") params.max_price = maxPrice;
+    
 
       const res = await userApi.get("/cars/filter", { params });
       const list = Array.isArray(res.data) ? res.data : [];
@@ -190,7 +196,7 @@ const t = {
   useEffect(() => {
     fetchFilteredCars();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedLocation, selectedFuel, selectedSeats, minPrice, maxPrice]);
+  }, [selectedLocation, selectedFuel, selectedSeats,selectedBadge, minPrice, maxPrice]);
 
   // -------------------------
   // Scroll animations
@@ -284,17 +290,21 @@ const t = {
     setSelectedLocation("all");
     setSelectedFuel("all");
     setSelectedSeats("all");
+    setSelectedBadge("all");
     setMinPrice("");
     setMaxPrice("");
     setSortBy("featured");
+
   };
 
-  const activeFiltersCount = [
-    selectedLocation !== "all",
-    selectedFuel !== "all",
-    selectedSeats !== "all",
-    minPrice !== "" || maxPrice !== "",
-  ].filter(Boolean).length;
+const activeFiltersCount = [
+  selectedLocation !== "all",
+  selectedFuel !== "all",
+  selectedSeats !== "all",
+  selectedBadge !== "all",
+  minPrice !== "" || maxPrice !== "",
+].filter(Boolean).length;
+
 
   // -------------------------
   // Book Now
@@ -318,16 +328,16 @@ const t = {
       return;
     }
 
-  navigate(
-  `/review-booking?car_id=${car.id}` +
-    `&pickup_location=${encodeURIComponent(t.pickup_location)}` +
-    `&drop_location=${encodeURIComponent(t.drop_location)}` +
-    `&start_date=${encodeURIComponent(t.start_date)}` +
-    `&start_time=${encodeURIComponent(t.start_time || "")}` +
-    `&end_date=${encodeURIComponent(t.end_date)}` +
-    `&booking_mode=${encodeURIComponent((t.booking_mode || "RENTAL").toUpperCase())}`, // ✅ ADD
-  { state: { car } }
-);
+    navigate(
+      `/review-booking?car_id=${car.id}` +
+      `&pickup_location=${encodeURIComponent(t.pickup_location)}` +
+      `&drop_location=${encodeURIComponent(t.drop_location)}` +
+      `&start_date=${encodeURIComponent(t.start_date)}` +
+      `&start_time=${encodeURIComponent(t.start_time || "")}` +
+      `&end_date=${encodeURIComponent(t.end_date)}` +
+      `&booking_mode=${encodeURIComponent((t.booking_mode || "RENTAL").toUpperCase())}`, // ✅ ADD
+      { state: { car } }
+    );
 
   };
 
@@ -414,6 +424,25 @@ const t = {
               className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 ${showFilters ? "grid" : "hidden"
                 } lg:grid`}
             >
+
+              {/* Badge */}
+              <div className="lg:col-span-1">
+                <label className="block text-sm font-bold text-gray-700 mb-2">
+                  Car Type
+                </label>
+                <select
+                  value={selectedBadge}
+                  onChange={(e) => setSelectedBadge(e.target.value)}
+                  className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-cyan-500 focus:bg-white focus:outline-none transition-all text-gray-900 cursor-pointer"
+                >
+                  <option value="all">All</option>
+                  <option value="PLATINUM">Platinum</option>
+                  <option value="GOLD">Gold</option>
+                  <option value="SILVER">Silver</option>
+                </select>
+              </div>
+
+
               {/* Location */}
               <div className="lg:col-span-1">
                 <label className="block text-sm font-bold text-gray-700 mb-2">
@@ -505,8 +534,8 @@ const t = {
                   onClick={clearFilters}
                   disabled={activeFiltersCount === 0 && !searchQuery}
                   className={`w-full px-4 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 ${activeFiltersCount > 0 || searchQuery
-                      ? "bg-cyan-100 text-cyan-600 hover:bg-cyan-200"
-                      : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                    ? "bg-cyan-100 text-cyan-600 hover:bg-cyan-200"
+                    : "bg-gray-100 text-gray-400 cursor-not-allowed"
                     }`}
                 >
                   <X className="w-5 h-5" />
@@ -598,8 +627,8 @@ const t = {
                     <button
                       onClick={() => toggleFavorite(car.id)}
                       className={`absolute top-4 right-4 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 backdrop-blur-md border ${isFavorite
-                          ? "bg-pink-500 border-pink-500 text-white scale-110"
-                          : "bg-white/80 border-white/50 text-gray-700 hover:bg-white hover:scale-110"
+                        ? "bg-pink-500 border-pink-500 text-white scale-110"
+                        : "bg-white/80 border-white/50 text-gray-700 hover:bg-white hover:scale-110"
                         }`}
                     >
                       <Heart

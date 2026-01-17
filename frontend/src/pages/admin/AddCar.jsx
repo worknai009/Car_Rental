@@ -214,9 +214,9 @@ const AddCar = () => {
           onChange={onChange}
         >
           <option value="">No Badge</option>
-          <option value="Popular">Popular</option>
-          <option value="Best Value">Best Value</option>
-          <option value="New">New</option>
+          <option value="PLATINUM">Platinum</option>
+          <option value="GOLD">Gold</option>
+          <option value="SILVER">Silver</option>
         </select>
 
         {/* Image */}

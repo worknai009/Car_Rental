@@ -55,6 +55,7 @@ exports.filterCars = async (req, res) => {
       max_price,
       min_rating,
       available,
+      badge, 
     } = req.query;
 
     let query = `
@@ -106,6 +107,13 @@ exports.filterCars = async (req, res) => {
     if (available === "1") {
       query += " AND IFNULL(c.is_available, 1) = 1";
     }
+
+if (badge && badge !== "all") {
+  query += " AND TRIM(UPPER(IFNULL(c.badge,''))) = TRIM(UPPER(?))";
+  params.push(badge);
+}
+
+
 
     query += " ORDER BY c.id DESC";
 

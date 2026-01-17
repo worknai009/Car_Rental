@@ -69,7 +69,7 @@ const Login = () => {
       setFormData(prev => ({ ...prev, user_id: data.user_id }));
 
       setShowOtpModal(true);
-      setResendTimer(30);
+      setResendTimer(60);
     } catch (err) {
       alert(err.message);
     } finally {
