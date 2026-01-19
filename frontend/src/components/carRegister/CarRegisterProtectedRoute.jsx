@@ -6,11 +6,7 @@ const CarRegisterProtectedRoute = () => {
   const { token } = useCarRegisterAuth();
   const location = useLocation();
 
-  return token ? (
-    <Outlet />
-  ) : (
-    <Navigate to="/car-register/login" replace state={{ from: location }} />
-  );
+return token ? <Outlet /> : <Navigate to="/car-register/login" replace />;
 };
 
 export default CarRegisterProtectedRoute;

@@ -14,5 +14,6 @@ router.use("/contacts", require("./admin.contact.routes"));
 router.use("/charts", require("./admin.chart.routes"));
 router.use("/dashboard", require("./admin.dashboard.routes")); // ✅ NEW
 router.use("/cancel-requests", require("./cancelRequest.admin.routes"));
+router.use("/car-requests", require("./adminCarRequestsRoutes"));
 
 module.exports = router;

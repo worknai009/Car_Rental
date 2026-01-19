@@ -75,7 +75,7 @@ exports.login = async (req, res) => {
     const cleanEmail = String(email).trim().toLowerCase();
 
     const rows = await exe(
-      `SELECT id, name, phone, email, password_hash, role, status
+      `SELECT id, name, phone, email, password_hash, role, status,created_at, updated_at
        FROM car_register_users
        WHERE email = ?
        LIMIT 1`,
@@ -110,6 +110,8 @@ exports.login = async (req, res) => {
       email: userRow.email,
       role: userRow.role,
       status: userRow.status,
+      created_at: userRow.created_at,
+      updated_at: userRow.updated_at,
     };
 
     return res.json({ message: "Login successful", token, user });

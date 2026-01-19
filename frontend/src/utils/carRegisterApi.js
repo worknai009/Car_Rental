@@ -1,33 +1,27 @@
-export const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:1000";
+import axios from "axios";
 
-// ✅ Change these endpoints to your backend
-export const carRegisterAuth = {
-  login: `${API_BASE}/car-register/login`,
-  register: `${API_BASE}/car-register/register`,
-  me: `${API_BASE}/car-register/me`,
-};
+const carRegisterApi = axios.create({
+  baseURL: "http://localhost:1000/car-register",
+});
 
-export async function apiRequest(url, { method = "GET", body, token } = {}) {
-  const res = await fetch(url, {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-
-  let data = null;
-  try {
-    data = await res.json();
-  } catch {
-    data = null;
+carRegisterApi.interceptors.request.use((config) => {
+  const token = localStorage.getItem("carRegisterToken");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
   }
+  return config;
+});
 
-  if (!res.ok) {
-    const message = data?.message || data?.error || `Request failed (${res.status})`;
-    throw new Error(message);
+carRegisterApi.interceptors.response.use(
+  (res) => res,
+  (err) => {
+    if (err?.response?.status === 401) {
+      localStorage.removeItem("carRegisterToken");
+      localStorage.removeItem("carRegisterUser");
+      window.location.href = "/car-register/login"; // ✅ CORRECT
+    }
+    return Promise.reject(err);
   }
+);
 
-  return data;
-}
+export default carRegisterApi;

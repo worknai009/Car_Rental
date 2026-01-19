@@ -1,192 +1,299 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import carRegisterApi from "../../utils/carRegisterApi";
+
+/* ================= COMMON INPUT STYLE ================= */
+const INPUT =
+  "mt-1 w-full rounded-xl border border-gray-400 px-4 py-3 bg-white " +
+  "focus:border-black focus:ring-1 focus:ring-black focus:outline-none transition";
+
+/* ================= LUXURY CATEGORY STYLES ================= */
+const CATEGORY_STYLES = {
+  SILVER: {
+    card: "border-gray-400 bg-gray-50",
+    active: "border-gray-800 bg-gray-100",
+    badge: "bg-gray-800 text-white",
+  },
+  GOLD: {
+    card: "border-yellow-400 bg-yellow-50",
+    active: "border-yellow-600 bg-yellow-100",
+    badge: "bg-yellow-600 text-white",
+  },
+  PLATINUM: {
+    card: "border-purple-400 bg-purple-50",
+    active: "border-purple-700 bg-purple-100",
+    badge: "bg-purple-700 text-white",
+  },
+};
+
+const LuxuryCard = ({ label, value, selected, onChange }) => {
+  const styles = CATEGORY_STYLES[label];
+
+  return (
+    <label
+      className={`cursor-pointer rounded-2xl border-2 p-5 transition-all
+      ${selected ? styles.active : styles.card}`}
+    >
+      <input
+        type="radio"
+        name="requested_category_id"
+        value={value}
+        checked={selected}
+        onChange={onChange}
+        required
+        className="hidden"
+      />
+
+      <div className="flex justify-between items-center">
+        <div>
+          <p className="font-black">{label}</p>
+          <p className="text-xs text-gray-600">
+            {label === "SILVER" && "Standard Luxury"}
+            {label === "GOLD" && "Premium Luxury"}
+            {label === "PLATINUM" && "Ultra Luxury"}
+          </p>
+        </div>
+
+        {selected && (
+          <span className={`px-3 py-1 text-xs rounded-full ${styles.badge}`}>
+            Selected
+          </span>
+        )}
+      </div>
+    </label>
+  );
+};
+
+const INITIAL_FORM = {
+  name: "",
+  brand: "",
+  category_id: "",
+  car_details: "",
+  city: "",
+  year: "",
+  seats: "",
+  fuel_type: "",
+  price_per_day: "",
+  requested_category_id: "",
+};
+
+const INITIAL_FILES = {
+  cars_image: null,
+  rc_book: null,
+  insurance_copy: null,
+  puc_certificate: null,
+  id_proof: null,
+};
 
 const CarRegisterAddCar = () => {
-  const [form, setForm] = useState({
-    name: "",
-    brand: "",
-    details: "",
-    category: "",
-    fuel_type: "",
-    year: "",
-    seats: "",
-    city: "",
-    price_per_day: "",
-  });
+  const [carCategories, setCarCategories] = useState([]);
+  const [form, setForm] = useState(INITIAL_FORM);
+  const [files, setFiles] = useState(INITIAL_FILES);
+
+  // used to force-remount file inputs after successful submit
+  const [resetKey, setResetKey] = useState(0);
+
+  useEffect(() => {
+    carRegisterApi.get("/categories").then((res) => {
+      setCarCategories(res.data || []);
+    });
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((p) => ({ ...p, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleFile = (e) => {
+    const { name, files: fileList } = e.target;
+    setFiles((p) => ({ ...p, [name]: fileList?.[0] || null }));
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log(form);
-    alert("Car submitted for admin approval");
+
+    try {
+      const data = new FormData();
+
+      Object.entries(form).forEach(([k, v]) => {
+        if (v !== "") data.append(k, v);
+      });
+
+      Object.entries(files).forEach(([k, v]) => {
+        if (v) data.append(k, v);
+      });
+
+      await carRegisterApi.post("/cars/add", data, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      alert("Car submitted for approval ✅");
+
+      // ✅ Reset everything
+      setForm(INITIAL_FORM);
+      setFiles(INITIAL_FILES);
+      setResetKey((k) => k + 1); // clears file inputs
+    } catch (err) {
+      console.error(err);
+      alert("Submission failed ❌");
+    }
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-black text-gray-900">Add Car</h1>
-        <p className="text-sm text-gray-500">
-          Fill car details. Admin approval required before listing.
-        </p>
-      </div>
+    <div className="max-w-6xl mx-auto space-y-8">
+      <h1 className="text-3xl font-black">Register Your Car</h1>
 
-      {/* Form Card */}
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white rounded-3xl border border-gray-200/60 shadow-sm p-6 space-y-6"
-      >
-        {/* Car Name & Brand */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="text-sm font-bold text-gray-700">Car Name</label>
+      {/* key={resetKey} forces remount of form -> clears file inputs */}
+      <form key={resetKey} onSubmit={handleSubmit} className="bg-white p-8 space-y-10">
+        {/* CAR INFO */}
+        <section>
+          <div className="grid md:grid-cols-2 gap-4">
             <input
-              type="text"
               name="name"
-              required
               value={form.name}
               onChange={handleChange}
-              placeholder="e.g. Swift Dzire"
-              className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-3 focus:ring-2 focus:ring-cyan-400 focus:outline-none"
-            />
-          </div>
-
-          <div>
-            <label className="text-sm font-bold text-gray-700">Brand</label>
-            <input
-              type="text"
-              name="brand"
+              placeholder="Car Name"
+              className={INPUT}
               required
+            />
+            <input
+              name="brand"
               value={form.brand}
               onChange={handleChange}
-              placeholder="Maruti, Hyundai, Tata"
-              className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-3 focus:ring-2 focus:ring-cyan-400 focus:outline-none"
-            />
-          </div>
-        </div>
-
-        {/* Car Details */}
-        <div>
-          <label className="text-sm font-bold text-gray-700">
-            Car Details / Description
-          </label>
-          <textarea
-            name="details"
-            rows={3}
-            value={form.details}
-            onChange={handleChange}
-            placeholder="Short description about the car"
-            className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-3 focus:ring-2 focus:ring-cyan-400 focus:outline-none"
-          />
-        </div>
-
-        {/* Category & Fuel */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="text-sm font-bold text-gray-700">Category</label>
-            <select
-              name="category"
+              placeholder="Brand"
+              className={INPUT}
               required
-              value={form.category}
+            />
+
+            <select
+              name="category_id"
+              value={form.category_id}
               onChange={handleChange}
-              className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-3 bg-white focus:ring-2 focus:ring-cyan-400 focus:outline-none"
+              className={INPUT}
+              required
             >
-              <option value="">Select Category</option>
-              <option>SUV</option>
-              <option>Sedan</option>
-              <option>Hatchback</option>
-              <option>Luxury</option>
+              <option value="">Select Car Type</option>
+              {carCategories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
             </select>
           </div>
 
-          <div>
-            <label className="text-sm font-bold text-gray-700">Fuel Type</label>
-            <select
-              name="fuel_type"
-              required
-              value={form.fuel_type}
+          <textarea
+            name="car_details"
+            value={form.car_details}
+            onChange={handleChange}
+            className={INPUT}
+            rows={3}
+            placeholder="Car Details"
+          />
+        </section>
+
+        {/* SPECS */}
+        <section>
+          <div className="grid md:grid-cols-4 gap-4">
+            <input
+              name="year"
+              value={form.year}
               onChange={handleChange}
-              className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-3 bg-white focus:ring-2 focus:ring-cyan-400 focus:outline-none"
-            >
-              <option value="">Select Fuel</option>
+              placeholder="Year"
+              className={INPUT}
+              type="number"
+            />
+            <input
+              name="seats"
+              value={form.seats}
+              onChange={handleChange}
+              placeholder="Seats"
+              className={INPUT}
+              type="number"
+            />
+
+            <select name="fuel_type" value={form.fuel_type} onChange={handleChange} className={INPUT}>
+              <option value="">Fuel Type</option>
               <option>Petrol</option>
               <option>Diesel</option>
               <option>CNG</option>
               <option>Electric</option>
             </select>
-          </div>
-        </div>
 
-        {/* Year, Seats, City */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className="text-sm font-bold text-gray-700">Year</label>
             <input
-              type="number"
-              name="year"
-              required
-              value={form.year}
-              onChange={handleChange}
-              placeholder="2022"
-              className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-3 focus:ring-2 focus:ring-cyan-400 focus:outline-none"
-            />
-          </div>
-
-          <div>
-            <label className="text-sm font-bold text-gray-700">Seats</label>
-            <input
-              type="number"
-              name="seats"
-              required
-              value={form.seats}
-              onChange={handleChange}
-              placeholder="5"
-              className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-3 focus:ring-2 focus:ring-cyan-400 focus:outline-none"
-            />
-          </div>
-
-          <div>
-            <label className="text-sm font-bold text-gray-700">City</label>
-            <input
-              type="text"
               name="city"
-              required
               value={form.city}
               onChange={handleChange}
-              placeholder="Pune"
-              className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-3 focus:ring-2 focus:ring-cyan-400 focus:outline-none"
+              placeholder="City"
+              className={INPUT}
             />
           </div>
-        </div>
 
-        {/* Price */}
-        <div>
-          <label className="text-sm font-bold text-gray-700">
-            Price Per Day (₹)
-          </label>
           <input
-            type="number"
             name="price_per_day"
-            required
             value={form.price_per_day}
             onChange={handleChange}
-            placeholder="1500"
-            className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-3 focus:ring-2 focus:ring-cyan-400 focus:outline-none"
+            placeholder="Price Per Day"
+            className={INPUT}
+            type="number"
           />
-        </div>
+        </section>
 
-        {/* Submit */}
-        <div className="flex justify-end">
-          <button
-            type="submit"
-            className="px-8 py-3 rounded-xl bg-gradient-to-r from-cyan-600 to-teal-600 text-white font-black shadow-lg hover:shadow-xl transition"
-          >
-            Submit for Approval
-          </button>
-        </div>
+        {/* LUXURY */}
+        <section className="grid md:grid-cols-3 gap-4">
+          <LuxuryCard
+            label="SILVER"
+            value="1"
+            selected={form.requested_category_id === "1"}
+            onChange={handleChange}
+          />
+          <LuxuryCard
+            label="GOLD"
+            value="2"
+            selected={form.requested_category_id === "2"}
+            onChange={handleChange}
+          />
+          <LuxuryCard
+            label="PLATINUM"
+            value="3"
+            selected={form.requested_category_id === "3"}
+            onChange={handleChange}
+          />
+        </section>
+
+        {/* FILES */}
+        <section>
+          <h2 className="font-black mb-4 text-lg">Upload Documents</h2>
+
+          <div className="grid md:grid-cols-2 gap-4">
+            {[
+              { key: "cars_image", label: "Car Image (Front / Side)", accept: "image/*" },
+              { key: "rc_book", label: "RC Book", accept: "image/*,application/pdf" },
+              { key: "insurance_copy", label: "Insurance Copy", accept: "image/*,application/pdf" },
+              { key: "puc_certificate", label: "PUC Certificate", accept: "image/*,application/pdf" },
+              { key: "id_proof", label: "Owner ID Proof (Aadhar / DL)", accept: "image/*,application/pdf" },
+            ].map(({ key, label, accept }) => (
+              <div key={key} className="border rounded-xl p-4">
+                <label className="block text-sm font-bold mb-2">{label}</label>
+
+                <input
+                  type="file"
+                  name={key}
+                  accept={accept}
+                  onChange={handleFile}
+                  required
+                  className="block w-full text-sm"
+                />
+
+                {files[key] && (
+                  <p className="mt-2 text-xs text-green-600">Selected: {files[key].name}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <button type="submit" className="bg-black text-white px-10 py-4 rounded-xl">
+          Submit
+        </button>
       </form>
     </div>
   );

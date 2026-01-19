@@ -18,24 +18,22 @@ const CarRegisterLogin = () => {
     }));
   };
 
-  const onSubmit = async (e) => {
-    e.preventDefault();
-    setErr("");
+const onSubmit = async (e) => {
+  e.preventDefault();
+  setErr("");
 
-    try {
-      await login(form); // ✅ wait for API success
+  try {
+    await login(form); // context handles everything
 
-      alert("✅ Login successful!");
-      navigate("/car-register/dashboard", { replace: true });
-    } catch (error) {
-      const message =
-        error?.response?.data?.message ||
-        error?.message ||
-        "Login failed";
-
-      setErr(message);
-    }
-  };
+    navigate("/car-register/dashboard", { replace: true });
+  } catch (error) {
+    setErr(
+      error?.response?.data?.message ||
+      error?.message ||
+      "Login failed"
+    );
+  }
+};
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-white to-teal-50 flex items-center justify-center px-4">

@@ -27,24 +27,36 @@ const STATUS_OPTIONS = [
   "CANCELLED",
 ];
 
+// ✅ Safe date formatter (no timezone shifting)
+const formatDate = (dateStr) => {
+  if (!dateStr) return "-";
+
+  // if already YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(String(dateStr))) return String(dateStr);
+
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return "-";
+
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+};
+
 // ✅ Convert any incoming status into one of STATUS_OPTIONS
 const normalizeStatus = (s) => {
   if (!s) return "BOOKED";
   const v = String(s).trim().toUpperCase();
 
-  // common variations
   if (v === "CANCELED") return "CANCELLED";
   if (v === "PENDING") return "BOOKED";
 
-  // if value is known, return it
   if (STATUS_OPTIONS.includes(v)) return v;
-
   return "BOOKED";
 };
 
 const labelStatus = (s) => {
   const v = normalizeStatus(s);
-  // prettier display
   return v.charAt(0) + v.slice(1).toLowerCase();
 };
 
@@ -58,7 +70,14 @@ const StatusChip = ({ value }) => {
       : s === "APPROVED" || s === "CONFIRMED"
       ? "info"
       : "warning";
-  return <Chip size="small" label={labelStatus(s)} color={color} variant="outlined" />;
+  return (
+    <Chip
+      size="small"
+      label={labelStatus(s)}
+      color={color}
+      variant="outlined"
+    />
+  );
 };
 
 const safeText = (v) => {
@@ -75,6 +94,9 @@ const BookingList = () => {
   const [details, setDetails] = useState(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
 
+  // ✅ show only 10 rows
+  const top10Rows = useMemo(() => (Array.isArray(rows) ? rows.slice(0, 10) : []), [rows]);
+
   const fetchBookings = async () => {
     try {
       setLoading(true);
@@ -84,13 +106,13 @@ const BookingList = () => {
       const normalized = data.map((r) => ({
         ...r,
         id: r.id ?? r.booking_id, // DataGrid needs id
+        booking_id: r.booking_id ?? r.id,
         status: normalizeStatus(r.status),
         start_date: r.start_date ?? r.startDate ?? r.from_date ?? r.fromDate ?? null,
         end_date: r.end_date ?? r.endDate ?? r.to_date ?? r.toDate ?? null,
         total_amount: r.total_amount ?? r.totalAmount ?? r.amount ?? null,
       }));
 
-      console.log("Bookings sample:", normalized[0]);
       setRows(normalized);
     } catch (err) {
       console.error("Fetch bookings error:", err);
@@ -104,25 +126,23 @@ const BookingList = () => {
     fetchBookings();
   }, []);
 
-  // ✅ FIXED: use setRows (not setBookings)
-const updateStatus = async (id, newStatus) => {
-  try {
-    const status = normalizeStatus(newStatus);
+  // ✅ update booking status
+  const updateStatus = async (id, newStatus) => {
+    try {
+      const status = normalizeStatus(newStatus);
 
-    // ✅ match backend route
-    await adminApi.patch(`/admin/bookings/${id}/status`, { status });
+      // ✅ match backend route
+      await adminApi.patch(`/admin/bookings/${id}/status`, { status });
 
-    // ✅ update UI immediately
-    setRows((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)));
+      // ✅ update UI immediately
+      setRows((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)));
 
-    alert("Status updated ✅");
-  } catch (err) {
-    console.error("Update status error:", err);
-    alert(err?.response?.data?.message || "Failed to update status");
-  }
-};
-
-
+      alert("Status updated ✅");
+    } catch (err) {
+      console.error("Update status error:", err);
+      alert(err?.response?.data?.message || "Failed to update status");
+    }
+  };
 
   const openDetails = async (id) => {
     setOpen(true);
@@ -134,7 +154,11 @@ const updateStatus = async (id, newStatus) => {
       const d = res.data || {};
       setDetails({
         ...d,
+        booking_id: d.booking_id ?? d.id,
         status: normalizeStatus(d.status),
+        start_date: d.start_date ?? d.startDate ?? d.from_date ?? d.fromDate ?? null,
+        end_date: d.end_date ?? d.endDate ?? d.to_date ?? d.toDate ?? null,
+        total_amount: d.total_amount ?? d.totalAmount ?? d.amount ?? null,
       });
     } catch (err) {
       console.error("Booking details error:", err);
@@ -193,13 +217,13 @@ const updateStatus = async (id, newStatus) => {
         field: "start_date",
         headerName: "Start Date",
         minWidth: 140,
-        renderCell: (p) => <span>{safeText(p.value)}</span>,
+        renderCell: (p) => <span>{formatDate(p.value)}</span>,
       },
       {
         field: "end_date",
         headerName: "End Date",
         minWidth: 140,
-        renderCell: (p) => <span>{safeText(p.value)}</span>,
+        renderCell: (p) => <span>{formatDate(p.value)}</span>,
       },
 
       {
@@ -263,14 +287,15 @@ const updateStatus = async (id, newStatus) => {
         ),
       },
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 
   return (
     <Box m="20px">
       <Box display="flex" alignItems="center" justifyContent="space-between">
-        <Header title="BOOKINGS" subtitle="All bookings + update status + invoice" />
-        <IconButton onClick={fetchBookings}>
+        <Header title="BOOKINGS" subtitle="All bookings + update status + invoice (Top 10)" />
+        <IconButton onClick={fetchBookings} title="Refresh">
           <RefreshCw size={18} />
         </IconButton>
       </Box>
@@ -288,13 +313,13 @@ const updateStatus = async (id, newStatus) => {
         }}
       >
         <DataGrid
-          rows={rows}
+          rows={top10Rows} // ✅ ONLY 10
           columns={columns}
           loading={loading}
           getRowId={(row) => row.id}
-          pageSizeOptions={[10, 25, 50, 100]}
+          pageSizeOptions={[10]}
           initialState={{
-            pagination: { paginationModel: { pageSize: 25, page: 0 } },
+            pagination: { paginationModel: { pageSize: 10, page: 0 } },
           }}
           disableRowSelectionOnClick
         />
@@ -312,37 +337,77 @@ const updateStatus = async (id, newStatus) => {
           ) : (
             <div id="invoice-print-area">
               <div className="title">Car Rental Invoice</div>
-              <div className="muted">Booking ID: #{details.booking_id}</div>
+              <div className="muted">Booking ID: #{safeText(details.booking_id)}</div>
 
               <div className="box">
                 <div className="row">
                   <b>Status</b>
-                  <span><StatusChip value={details.status} /></span>
+                  <span>
+                    <StatusChip value={details.status} />
+                  </span>
                 </div>
-                <div className="row"><b>Total Amount</b><span>₹{safeText(details.total_amount)}</span></div>
-                <div className="row"><b>Start Date</b><span>{safeText(details.start_date)}</span></div>
-                <div className="row"><b>End Date</b><span>{safeText(details.end_date)}</span></div>
+                <div className="row">
+                  <b>Total Amount</b>
+                  <span>₹{safeText(details.total_amount)}</span>
+                </div>
+                <div className="row">
+                  <b>Start Date</b>
+                  <span>{formatDate(details.start_date)}</span>
+                </div>
+                <div className="row">
+                  <b>End Date</b>
+                  <span>{formatDate(details.end_date)}</span>
+                </div>
                 <hr />
-                <div className="row"><b>Pickup</b><span>{safeText(details.pickup_location)}</span></div>
-                <div className="row"><b>Drop</b><span>{safeText(details.drop_location)}</span></div>
-                <div className="row"><b>Created At</b><span>{safeText(details.created_at)}</span></div>
+                <div className="row">
+                  <b>Pickup</b>
+                  <span>{safeText(details.pickup_location)}</span>
+                </div>
+                <div className="row">
+                  <b>Drop</b>
+                  <span>{safeText(details.drop_location)}</span>
+                </div>
+                <div className="row">
+                  <b>Created At</b>
+                  <span>{safeText(details.created_at)}</span>
+                </div>
               </div>
 
               <div className="box">
-                <div className="title" style={{ fontSize: 16 }}>Customer</div>
-                <div className="row"><b>Name</b><span>{safeText(details.user_name)}</span></div>
-                <div className="row"><b>Email</b><span>{safeText(details.user_email)}</span></div>
+                <div className="title" style={{ fontSize: 16 }}>
+                  Customer
+                </div>
+                <div className="row">
+                  <b>Name</b>
+                  <span>{safeText(details.user_name)}</span>
+                </div>
+                <div className="row">
+                  <b>Email</b>
+                  <span>{safeText(details.user_email)}</span>
+                </div>
               </div>
 
               <div className="box">
-                <div className="title" style={{ fontSize: 16 }}>Car</div>
-                <div className="row"><b>Name</b><span>{safeText(details.car_name)}</span></div>
-                <div className="row"><b>Brand</b><span>{safeText(details.car_brand)}</span></div>
-                <div className="row"><b>Price/Day</b><span>₹{safeText(details.price_per_day)}</span></div>
+                <div className="title" style={{ fontSize: 16 }}>
+                  Car
+                </div>
+                <div className="row">
+                  <b>Name</b>
+                  <span>{safeText(details.car_name)}</span>
+                </div>
+                <div className="row">
+                  <b>Brand</b>
+                  <span>{safeText(details.car_brand)}</span>
+                </div>
+                <div className="row">
+                  <b>Price/Day</b>
+                  <span>₹{safeText(details.price_per_day)}</span>
+                </div>
 
+                {/* ✅ FIXED IMAGE URL */}
                 {details.car_image ? (
                   <img
-                    src={`http://localhost:1000/public/${details.car_image}`}
+                    src={`http://localhost:1000${details.car_image}`}
                     alt="car"
                   />
                 ) : null}
