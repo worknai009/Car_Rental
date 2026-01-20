@@ -14,6 +14,7 @@ const AddCar = () => {
     car_details: "",
     category_id: "",
     price_per_day: "",
+    price_per_km: "",
     is_available: 1,
 
     // ✅ NEW FIELDS
@@ -133,6 +134,15 @@ const AddCar = () => {
           value={form.price_per_day}
           onChange={onChange}
           placeholder="Price per day"
+          required
+        />
+
+        <input
+          className="border p-2 rounded"
+          name="price_per_km"
+          value={form.price_per_km}
+          onChange={onChange}
+          placeholder="Price per KM"
           required
         />
 

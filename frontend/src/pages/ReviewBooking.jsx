@@ -3,6 +3,31 @@ import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import userApi from "../utils/userApi";
 import { Car, MapPin, Calendar, ArrowRight, Loader2 } from "lucide-react";
 
+function toNum(v) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+// ✅ Haversine distance (straight-line). Works without extra API.
+function haversineKm(a, b) {
+  if (!a?.lat || !a?.lng || !b?.lat || !b?.lng) return null;
+  const R = 6371;
+  const toRad = (x) => (x * Math.PI) / 180;
+
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+
+  const lat1 = toRad(a.lat);
+  const lat2 = toRad(b.lat);
+
+  const s =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+
+  const c = 2 * Math.atan2(Math.sqrt(s), Math.sqrt(1 - s));
+  return Number((R * c).toFixed(2));
+}
+
 const ReviewBookingPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -11,11 +36,18 @@ const ReviewBookingPage = () => {
   const carId = searchParams.get("car_id");
 
   const bookingModeFromUrl = (searchParams.get("booking_mode") || "RENTAL").toUpperCase();
+  const billingTypeFromUrl = (searchParams.get("billing_type") || "PER_DAY").toUpperCase();
+
   const pickupFromUrl = searchParams.get("pickup_location") || "";
   const dropFromUrl = searchParams.get("drop_location") || "";
   const startDateFromUrl = searchParams.get("start_date") || "";
-  const startTimeFromUrl = searchParams.get("start_time") || ""; // ✅ already present
+  const startTimeFromUrl = searchParams.get("start_time") || "";
   const endDateFromUrl = searchParams.get("end_date") || "";
+
+  const pickupLatUrl = toNum(searchParams.get("pickup_lat"));
+  const pickupLngUrl = toNum(searchParams.get("pickup_lng"));
+  const dropLatUrl = toNum(searchParams.get("drop_lat"));
+  const dropLngUrl = toNum(searchParams.get("drop_lng"));
 
   const carFromState = location.state?.car || null;
 
@@ -23,40 +55,66 @@ const ReviewBookingPage = () => {
   const [loadingCar, setLoadingCar] = useState(!carFromState);
   const [saving, setSaving] = useState(false);
 
+  const [coords, setCoords] = useState({
+    pickup: { lat: pickupLatUrl, lng: pickupLngUrl },
+    drop: { lat: dropLatUrl, lng: dropLngUrl },
+  });
+
   const [form, setForm] = useState({
-    booking_mode: bookingModeFromUrl,     // ✅ added
-    start_time: startTimeFromUrl,         // ✅ added
+    booking_mode: bookingModeFromUrl,
+    billing_type: billingTypeFromUrl,
+    start_time: startTimeFromUrl,
     pickup_location: pickupFromUrl,
     drop_location: dropFromUrl,
     start_date: startDateFromUrl,
-    end_date:
-      bookingModeFromUrl === "TRANSFER"
-        ? startDateFromUrl
-        : endDateFromUrl,
+    end_date: bookingModeFromUrl === "TRANSFER" ? startDateFromUrl : endDateFromUrl,
   });
 
   // Sync when URL changes
   useEffect(() => {
     setForm({
       booking_mode: bookingModeFromUrl,
+      billing_type: billingTypeFromUrl,
       start_time: startTimeFromUrl,
       pickup_location: pickupFromUrl,
       drop_location: dropFromUrl,
       start_date: startDateFromUrl,
-      end_date:
-        bookingModeFromUrl === "TRANSFER"
-          ? startDateFromUrl
-          : endDateFromUrl,
+      end_date: bookingModeFromUrl === "TRANSFER" ? startDateFromUrl : endDateFromUrl,
+    });
+
+    setCoords({
+      pickup: { lat: pickupLatUrl, lng: pickupLngUrl },
+      drop: { lat: dropLatUrl, lng: dropLngUrl },
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    bookingModeFromUrl,
-    startTimeFromUrl,
-    pickupFromUrl,
-    dropFromUrl,
-    startDateFromUrl,
-    endDateFromUrl,
-  ]);
+  }, [location.search]);
+
+  // fallback: load coords from localStorage tripSearch
+  useEffect(() => {
+    const saved = localStorage.getItem("tripSearch");
+    if (!saved) return;
+    try {
+      const t = JSON.parse(saved);
+      if (coords.pickup.lat && coords.drop.lat) return;
+
+      setCoords((p) => ({
+        pickup: {
+          lat: p.pickup.lat ?? toNum(t.pickup_lat),
+          lng: p.pickup.lng ?? toNum(t.pickup_lng),
+        },
+        drop: {
+          lat: p.drop.lat ?? toNum(t.drop_lat),
+          lng: p.drop.lng ?? toNum(t.drop_lng),
+        },
+      }));
+
+      // also bring billing_type if missing
+      if (!form.billing_type && t.billing_type) {
+        setForm((x) => ({ ...x, billing_type: String(t.billing_type).toUpperCase() }));
+      }
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const fetchCar = async () => {
@@ -83,20 +141,43 @@ const ReviewBookingPage = () => {
   }, [carId, navigate]);
 
   const days = useMemo(() => {
-    // ✅ Transfer always 1 day
     if (form.booking_mode === "TRANSFER") return 1;
-
     if (!form.start_date || !form.end_date) return 1;
+
     const s = new Date(form.start_date);
     const e = new Date(form.end_date);
     const diff = Math.ceil((e - s) / (1000 * 60 * 60 * 24)) + 1;
     return diff > 0 ? diff : 1;
   }, [form.start_date, form.end_date, form.booking_mode]);
 
+  // ✅ one-way distance (km)
+  const oneWayKm = useMemo(() => haversineKm(coords.pickup, coords.drop), [coords]);
+
+  // ✅ total km used for billing (RENTAL = 2-way)
+  const billedKm = useMemo(() => {
+    if (!oneWayKm) return null;
+    return form.booking_mode === "RENTAL" ? Number((oneWayKm * 2).toFixed(2)) : oneWayKm;
+  }, [oneWayKm, form.booking_mode]);
+
+  // ✅ base rate as YOUR RULE:
+  // RENTAL => use price_per_day
+  // TRANSFER => use price_per_km
+  const baseRate = useMemo(() => {
+    if (!car) return 0;
+    return form.booking_mode === "TRANSFER"
+      ? Number(car.price_per_km || 0)
+      : Number(car.price_per_day || 0);
+  }, [car, form.booking_mode]);
+
+  // ✅ total as YOUR RULE
   const total = useMemo(() => {
-    const price = Number(car?.price_per_day || 0);
-    return price * days;
-  }, [car?.price_per_day, days]);
+    if (form.billing_type === "PER_DAY") {
+      return Number((baseRate * days).toFixed(2));
+    }
+    // PER_KM
+    if (!billedKm) return 0;
+    return Number((baseRate * billedKm).toFixed(2));
+  }, [form.billing_type, baseRate, days, billedKm]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -104,9 +185,8 @@ const ReviewBookingPage = () => {
     setForm((p) => {
       const next = { ...p, [name]: value };
 
-      // ✅ if Transfer and start_date changed, keep end_date same as start_date
-      if (next.booking_mode === "TRANSFER" && name === "start_date") {
-        next.end_date = value;
+      if (next.booking_mode === "TRANSFER") {
+        next.end_date = next.start_date; // lock end date
       }
 
       return next;
@@ -116,20 +196,24 @@ const ReviewBookingPage = () => {
   const handleConfirmBooking = async () => {
     if (!carId) return alert("Car ID missing!");
 
-    // ✅ required fields
     if (!form.pickup_location || !form.drop_location || !form.start_date) {
       return alert("Please fill booking details.");
     }
 
-    // ✅ rental requires end_date
     if (form.booking_mode === "RENTAL" && !form.end_date) {
       return alert("Please select end date.");
+    }
+
+    // ✅ if PER_KM we must have distance
+    if (form.billing_type === "PER_KM") {
+      if (!oneWayKm || oneWayKm <= 0) {
+        return alert("KM not found. Please go back and select pickup & drop from Google suggestions.");
+      }
     }
 
     try {
       setSaving(true);
 
-      // ✅ PAYLOAD MUST BE HERE (ReviewBookingPage.jsx)
       const payload = {
         car_id: Number(carId),
         pickup_location: form.pickup_location,
@@ -138,6 +222,10 @@ const ReviewBookingPage = () => {
         end_date: form.booking_mode === "TRANSFER" ? form.start_date : form.end_date,
         booking_mode: form.booking_mode,
         start_time: form.start_time || null,
+
+        // ✅ NEW
+        billing_type: form.billing_type,
+        distance_km: form.billing_type === "PER_KM" ? oneWayKm : null, // ✅ one-way only
       };
 
       const res = await userApi.post("/bookings/booking", payload);
@@ -182,6 +270,9 @@ const ReviewBookingPage = () => {
 
   const imageUrl = car?.cars_image ? `http://localhost:1000/public/${car.cars_image}` : "";
 
+  const rateLabel =
+    form.booking_mode === "TRANSFER" ? "Rate (uses price_per_km)" : "Rate (uses price_per_day)";
+
   return (
     <div className="min-h-screen bg-gray-50 pt-24 pb-10 px-4">
       <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -204,14 +295,14 @@ const ReviewBookingPage = () => {
             </div>
 
             <h1 className="text-2xl font-black text-gray-900">{car.name}</h1>
-            <p className="text-gray-600">{car.brand} • {car.category_name || "Category"}</p>
+            <p className="text-gray-600">
+              {car.brand} • {car.category_name || "Category"}
+            </p>
 
             <div className="flex items-center justify-between pt-4 border-t">
               <div>
-                <div className="text-xs text-gray-500 font-semibold">Price / day</div>
-                <div className="text-2xl font-black text-gray-900">
-                  ₹{Number(car.price_per_day || 0).toLocaleString()}
-                </div>
+                <div className="text-xs text-gray-500 font-semibold">{rateLabel}</div>
+                <div className="text-2xl font-black text-gray-900">₹{Number(baseRate).toLocaleString()}</div>
               </div>
 
               <div className="text-right">
@@ -219,6 +310,15 @@ const ReviewBookingPage = () => {
                 <div className="text-2xl font-black text-gray-900">{days}</div>
               </div>
             </div>
+
+            {form.billing_type === "PER_KM" ? (
+              <div className="flex items-center justify-between pt-4 border-t">
+                <div className="text-sm text-gray-600">Distance (billed)</div>
+                <div className="text-lg font-black text-gray-900">
+                  {billedKm ? `${billedKm} km` : "—"}
+                </div>
+              </div>
+            ) : null}
 
             <div className="flex items-center justify-between pt-4 border-t">
               <div className="text-sm text-gray-600">Estimated Total</div>
@@ -239,6 +339,25 @@ const ReviewBookingPage = () => {
             <span className="text-xs font-black px-3 py-1 rounded-full bg-gray-100">
               {form.booking_mode}
             </span>
+          </div>
+
+          {/* ✅ Billing Type selector */}
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-2">Billing Type</label>
+            <select
+              name="billing_type"
+              value={form.billing_type}
+              onChange={handleChange}
+              className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 bg-gray-50 focus:bg-white focus:border-cyan-500 outline-none"
+            >
+              <option value="PER_DAY">Per Day</option>
+              <option value="PER_KM">Per KM</option>
+            </select>
+            {form.billing_type === "PER_KM" && !oneWayKm ? (
+              <p className="mt-2 text-xs text-red-600 font-semibold">
+                KM not available. Go back and select locations from Google suggestions.
+              </p>
+            ) : null}
           </div>
 
           <div className="grid grid-cols-1 gap-4">
@@ -297,7 +416,7 @@ const ReviewBookingPage = () => {
 
           <button
             onClick={handleConfirmBooking}
-            disabled={saving}
+            disabled={saving || (form.billing_type === "PER_KM" && !oneWayKm)}
             className="w-full py-4 rounded-2xl bg-gradient-to-r from-cyan-600 to-teal-600 text-white font-black shadow-lg hover:shadow-2xl transition-all flex items-center justify-center gap-2 disabled:opacity-60"
           >
             {saving ? (

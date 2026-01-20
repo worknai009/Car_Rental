@@ -79,19 +79,23 @@ exports.createBooking = async (req, res) => {
       pickup_location: req.body.pickup_location,
       drop_location: req.body.drop_location,
       start_date,
-      // ✅ TRANSFER = same day
       end_date: booking_mode === "TRANSFER" ? start_date : req.body.end_date,
       booking_mode,
       start_time: req.body.start_time || null,
+
+      // ✅ NEW
+      billing_type: (req.body.billing_type || "PER_DAY").toUpperCase(),
+      distance_km: req.body.distance_km ?? null, // one-way from frontend
     };
 
     const data = await bookingService.createBooking(payload);
-    res.status(201).json({ message: "Booking created", ...data });
+    return res.status(201).json({ message: "Booking created", ...data });
   } catch (err) {
     console.error("CREATE BOOKING ERROR:", err);
-    res.status(400).json({ message: err.message || "Booking failed" });
+    return res.status(400).json({ message: err.message || "Booking failed" });
   }
 };
+
 
 exports.getMyBookings = async (req, res) => {
   try {

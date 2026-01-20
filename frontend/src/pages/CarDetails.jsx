@@ -16,6 +16,19 @@ import {
   MessageSquare,
 } from "lucide-react";
 
+const toNumOrNull = (v) => {
+  if (v === null || v === undefined || v === "") return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+};
+
+const normalizeMode = (m) => (String(m || "RENTAL").toUpperCase() === "TRANSFER" ? "TRANSFER" : "RENTAL");
+const normalizeBilling = (b, mode) => {
+  const x = String(b || "").toUpperCase();
+  if (x === "PER_KM" || x === "PER_DAY") return x;
+  return mode === "TRANSFER" ? "PER_KM" : "PER_DAY";
+};
+
 const CarDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -27,53 +40,63 @@ const CarDetails = () => {
   const [loadingReviews, setLoadingReviews] = useState(true);
   const [error, setError] = useState("");
 
-  // ✅ Trip from URL or localStorage
-const trip = useMemo(() => {
-  const qs = new URLSearchParams(location.search);
+  // ✅ Trip from URL or localStorage (now includes billing + coords)
+  const trip = useMemo(() => {
+    const qs = new URLSearchParams(location.search);
 
-  const t = {
-    booking_mode: (qs.get("booking_mode") || "").toUpperCase(),   // ✅ NEW
-    pickup_location: qs.get("pickup_location") || "",
-    drop_location: qs.get("drop_location") || "",
-    start_date: qs.get("start_date") || "",
-    start_time: qs.get("start_time") || "",
-    end_date: qs.get("end_date") || "",
-  };
+    const mode = normalizeMode(qs.get("booking_mode") || "");
+    const start_date = qs.get("start_date") || "";
 
-  // ✅ If URL trip is complete, store it
-  const hasUrlTrip = t.pickup_location && t.drop_location && t.start_date;
-  if (hasUrlTrip) {
-    // if transfer and end_date missing → same day
-    if ((t.booking_mode || "RENTAL") === "TRANSFER" && !t.end_date) {
-      t.end_date = t.start_date;
-    }
-    if (!t.booking_mode) t.booking_mode = "RENTAL";
-    localStorage.setItem("tripSearch", JSON.stringify(t));
-    return t;
-  }
+    const t = {
+      booking_mode: mode,
+      billing_type: normalizeBilling(qs.get("billing_type"), mode),
 
-  // ✅ Else load from localStorage
-  const saved = localStorage.getItem("tripSearch");
-  if (saved) {
-    try {
-      const parsed = JSON.parse(saved);
-      const mode = String(parsed.booking_mode || "RENTAL").toUpperCase();
-      return {
-        booking_mode: mode,
-        pickup_location: parsed.pickup_location || "",
-        drop_location: parsed.drop_location || "",
-        start_date: parsed.start_date || "",
-        start_time: parsed.start_time || "",
-        end_date: mode === "TRANSFER" ? (parsed.start_date || "") : (parsed.end_date || ""),
-      };
-    } catch {
+      pickup_location: qs.get("pickup_location") || "",
+      drop_location: qs.get("drop_location") || "",
+      start_date,
+      start_time: qs.get("start_time") || "",
+      end_date: mode === "TRANSFER" ? start_date : (qs.get("end_date") || ""),
+
+      pickup_lat: toNumOrNull(qs.get("pickup_lat")),
+      pickup_lng: toNumOrNull(qs.get("pickup_lng")),
+      drop_lat: toNumOrNull(qs.get("drop_lat")),
+      drop_lng: toNumOrNull(qs.get("drop_lng")),
+    };
+
+    const hasUrlTrip = t.pickup_location && t.drop_location && t.start_date;
+    if (hasUrlTrip) {
+      localStorage.setItem("tripSearch", JSON.stringify(t));
       return t;
     }
-  }
 
-  // default
-  return { ...t, booking_mode: "RENTAL" };
-}, [location.search]);
+    const saved = localStorage.getItem("tripSearch");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        const savedMode = normalizeMode(parsed.booking_mode);
+        const savedStart = parsed.start_date || "";
+        return {
+          booking_mode: savedMode,
+          billing_type: normalizeBilling(parsed.billing_type, savedMode),
+
+          pickup_location: parsed.pickup_location || "",
+          drop_location: parsed.drop_location || "",
+          start_date: savedStart,
+          start_time: parsed.start_time || "",
+          end_date: savedMode === "TRANSFER" ? savedStart : (parsed.end_date || ""),
+
+          pickup_lat: toNumOrNull(parsed.pickup_lat),
+          pickup_lng: toNumOrNull(parsed.pickup_lng),
+          drop_lat: toNumOrNull(parsed.drop_lat),
+          drop_lng: toNumOrNull(parsed.drop_lng),
+        };
+      } catch {
+        return { ...t, booking_mode: "RENTAL", billing_type: "PER_DAY" };
+      }
+    }
+
+    return { ...t, booking_mode: "RENTAL", billing_type: "PER_DAY" };
+  }, [location.search]);
 
   useEffect(() => {
     const fetchCar = async () => {
@@ -114,25 +137,37 @@ const trip = useMemo(() => {
     return `http://localhost:1000/public/${car.cars_image}`;
   }, [car]);
 
-const handleBookNow = () => {
-  const qs = new URLSearchParams();
-  qs.set("car_id", String(car?.id || id));
-  qs.set("pickup_location", trip.pickup_location || "");
-  qs.set("drop_location", trip.drop_location || "");
-  qs.set("start_date", trip.start_date || "");
-  qs.set("start_time", trip.start_time || "");
-  qs.set("booking_mode", (trip.booking_mode || "RENTAL").toUpperCase()); // ✅ MUST
-  qs.set(
-    "end_date",
-    (trip.booking_mode || "RENTAL").toUpperCase() === "TRANSFER"
-      ? (trip.start_date || "")
-      : (trip.end_date || "")
-  );
+  const handleBookNow = () => {
+    const mode = normalizeMode(trip.booking_mode);
+    const billing = normalizeBilling(trip.billing_type, mode);
 
-  navigate(`/review-booking?${qs.toString()}`, { state: { car } });
-};
+    // ✅ if PER_KM must have coords
+    if (billing === "PER_KM") {
+      if (!trip.pickup_lat || !trip.pickup_lng || !trip.drop_lat || !trip.drop_lng) {
+        alert("For PER_KM, please select Pickup & Drop from Google suggestions ✅");
+        navigate("/");
+        return;
+      }
+    }
 
+    const qs = new URLSearchParams();
+    qs.set("car_id", String(car?.id || id));
+    qs.set("pickup_location", trip.pickup_location || "");
+    qs.set("drop_location", trip.drop_location || "");
+    qs.set("start_date", trip.start_date || "");
+    qs.set("start_time", trip.start_time || "");
+    qs.set("booking_mode", mode);
+    qs.set("billing_type", billing);
 
+    qs.set("end_date", mode === "TRANSFER" ? (trip.start_date || "") : (trip.end_date || ""));
+
+    if (trip.pickup_lat != null) qs.set("pickup_lat", String(trip.pickup_lat));
+    if (trip.pickup_lng != null) qs.set("pickup_lng", String(trip.pickup_lng));
+    if (trip.drop_lat != null) qs.set("drop_lat", String(trip.drop_lat));
+    if (trip.drop_lng != null) qs.set("drop_lng", String(trip.drop_lng));
+
+    navigate(`/review-booking?${qs.toString()}`, { state: { car } });
+  };
 
   if (loadingCar) {
     return (
@@ -278,10 +313,11 @@ const handleBookNow = () => {
 
               <div className="space-y-3 text-sm">
                 <Row label="Mode" value={trip.booking_mode || "RENTAL"} />
+                <Row label="Billing" value={trip.billing_type || "PER_DAY"} />
                 <Row label="Pickup" value={trip.pickup_location || "—"} />
                 <Row label="Drop" value={trip.drop_location || "—"} />
                 <Row label="Start" value={trip.start_date || "—"} />
-                <Row label="End" value={trip.end_date || "—"} />
+                <Row label="End" value={(trip.booking_mode === "TRANSFER" ? trip.start_date : trip.end_date) || "—"} />
               </div>
 
               <div className="my-5 border-t" />

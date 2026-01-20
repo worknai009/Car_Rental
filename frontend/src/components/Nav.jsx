@@ -9,6 +9,7 @@ import {
   Mail,
   Bookmark,
   ChevronDown,
+  
 } from "lucide-react";
 
 const Nav = () => {
@@ -25,6 +26,7 @@ const Nav = () => {
     { name: "My Bookings", path: "/my-bookings", icon: Bookmark },
     { name: "About", path: "/about", icon: Info },
     { name: "Contact", path: "/contact", icon: Mail },
+    {name: "Events" , path: "/events", icon:Mail}
   ];
 
   // ✅ Change paths if your app uses different routes

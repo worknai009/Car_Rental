@@ -73,6 +73,7 @@ const INITIAL_FORM = {
   seats: "",
   fuel_type: "",
   price_per_day: "",
+  price_per_km: "",
   requested_category_id: "",
 };
 
@@ -216,6 +217,7 @@ const CarRegisterAddCar = () => {
               <option>Diesel</option>
               <option>CNG</option>
               <option>Electric</option>
+              <option>Hybrid</option>
             </select>
 
             <input
@@ -232,6 +234,15 @@ const CarRegisterAddCar = () => {
             value={form.price_per_day}
             onChange={handleChange}
             placeholder="Price Per Day"
+            className={INPUT}
+            type="number"
+          />
+
+          <input
+            name="price_per_km"
+            value={form.price_per_km}
+            onChange={handleChange}
+            placeholder="Price Per KM"
             className={INPUT}
             type="number"
           />

@@ -17,6 +17,20 @@ import {
 import { useNavigate, useLocation } from "react-router-dom";
 import userApi from "../utils/userApi";
 
+const toNumOrNull = (v) => {
+  if (v === null || v === undefined || v === "") return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+};
+
+const normalizeMode = (m) => (String(m || "RENTAL").toUpperCase() === "TRANSFER" ? "TRANSFER" : "RENTAL");
+const normalizeBilling = (b, mode) => {
+  const x = String(b || "").toUpperCase();
+  if (x === "PER_KM" || x === "PER_DAY") return x;
+  // default by mode
+  return mode === "TRANSFER" ? "PER_KM" : "PER_DAY";
+};
+
 const CarsPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -48,7 +62,6 @@ const CarsPage = () => {
   // -------------------------
   const [trip, setTrip] = useState(null);
 
-
   const getTripData = () => {
     if (trip) return trip;
 
@@ -63,52 +76,104 @@ const CarsPage = () => {
 
   const buildTripQS = (t) => {
     const qs = new URLSearchParams();
+    const mode = normalizeMode(t?.booking_mode);
+    const billing = normalizeBilling(t?.billing_type, mode);
+
+    const start = t?.start_date || "";
+    const end = mode === "TRANSFER" ? start : (t?.end_date || "");
+
     qs.set("pickup_location", t?.pickup_location || "");
     qs.set("drop_location", t?.drop_location || "");
-    qs.set("start_date", t?.start_date || "");
+    qs.set("start_date", start);
     qs.set("start_time", t?.start_time || "");
-    qs.set("end_date", t?.end_date || "");
-    qs.set("booking_mode", (t?.booking_mode || "RENTAL").toUpperCase());
+    qs.set("end_date", end);
+    qs.set("booking_mode", mode);
+    qs.set("billing_type", billing);
+
+    // ✅ coords
+    if (t?.pickup_lat != null) qs.set("pickup_lat", String(t.pickup_lat));
+    if (t?.pickup_lng != null) qs.set("pickup_lng", String(t.pickup_lng));
+    if (t?.drop_lat != null) qs.set("drop_lat", String(t.drop_lat));
+    if (t?.drop_lng != null) qs.set("drop_lng", String(t.drop_lng));
+
     return qs.toString();
   };
 
   const goToDetails = (carId) => {
     const t = getTripData();
-    if (t?.pickup_location && t?.drop_location && t?.start_date && t?.end_date) {
-      navigate(`/cars/${carId}?${buildTripQS(t)}`);
-    } else {
-      navigate(`/cars/${carId}`);
-    }
+    const mode = normalizeMode(t?.booking_mode);
+
+    const hasTrip =
+      t?.pickup_location &&
+      t?.drop_location &&
+      t?.start_date &&
+      (mode === "TRANSFER" ? true : !!t?.end_date);
+
+    if (hasTrip) navigate(`/cars/${carId}?${buildTripQS(t)}`);
+    else navigate(`/cars/${carId}`);
   };
 
-  // Read trip from URL OR localStorage
+  // ✅ Read trip from URL OR localStorage
   useEffect(() => {
     const qs = new URLSearchParams(location.search);
+
+    const mode = normalizeMode(qs.get("booking_mode") || "");
+    const start_date = qs.get("start_date") || "";
 
     const t = {
       pickup_location: qs.get("pickup_location") || "",
       drop_location: qs.get("drop_location") || "",
-      start_date: qs.get("start_date") || "",
+      start_date,
       start_time: qs.get("start_time") || "",
-      end_date: qs.get("end_date") || "",
-      booking_mode: (qs.get("booking_mode") || "").toUpperCase(), // ✅ ADD
+      end_date: mode === "TRANSFER" ? start_date : (qs.get("end_date") || ""),
+      booking_mode: mode,
+      billing_type: normalizeBilling(qs.get("billing_type"), mode),
+
+      // ✅ coords (important for PER_KM)
+      pickup_lat: toNumOrNull(qs.get("pickup_lat")),
+      pickup_lng: toNumOrNull(qs.get("pickup_lng")),
+      drop_lat: toNumOrNull(qs.get("drop_lat")),
+      drop_lng: toNumOrNull(qs.get("drop_lng")),
     };
 
     const hasUrlTrip =
-      t.pickup_location && t.drop_location && t.start_date && t.end_date;
+      t.pickup_location &&
+      t.drop_location &&
+      t.start_date &&
+      (t.booking_mode === "TRANSFER" ? true : !!t.end_date);
 
     if (hasUrlTrip) {
       setTrip(t);
       localStorage.setItem("tripSearch", JSON.stringify(t));
-    } else {
-      const saved = localStorage.getItem("tripSearch");
-      if (saved) {
-        try {
-          setTrip(JSON.parse(saved));
-        } catch {
-          setTrip(null);
-        }
+      return;
+    }
+
+    const saved = localStorage.getItem("tripSearch");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        const savedMode = normalizeMode(parsed.booking_mode);
+        const savedStart = parsed.start_date || "";
+        const normalized = {
+          pickup_location: parsed.pickup_location || "",
+          drop_location: parsed.drop_location || "",
+          start_date: savedStart,
+          start_time: parsed.start_time || "",
+          end_date: savedMode === "TRANSFER" ? savedStart : (parsed.end_date || ""),
+          booking_mode: savedMode,
+          billing_type: normalizeBilling(parsed.billing_type, savedMode),
+
+          pickup_lat: toNumOrNull(parsed.pickup_lat),
+          pickup_lng: toNumOrNull(parsed.pickup_lng),
+          drop_lat: toNumOrNull(parsed.drop_lat),
+          drop_lng: toNumOrNull(parsed.drop_lng),
+        };
+        setTrip(normalized);
+      } catch {
+        setTrip(null);
       }
+    } else {
+      setTrip(null);
     }
   }, [location.search]);
 
@@ -118,10 +183,9 @@ const CarsPage = () => {
   const fetchAllCars = async () => {
     try {
       setLoading(true);
-      const res = await userApi.get("/cars"); // ✅ load all cars
+      const res = await userApi.get("/cars");
       const list = Array.isArray(res.data) ? res.data : [];
 
-      // ✅ normalize is_available as NUMBER
       const normalized = list.map((c) => ({
         ...c,
         is_available: Number(c.is_available ?? 0),
@@ -153,7 +217,6 @@ const CarsPage = () => {
         minPrice !== "" ||
         maxPrice !== "";
 
-
       if (!hasFilters) {
         await fetchAllCars();
         return;
@@ -167,11 +230,9 @@ const CarsPage = () => {
       if (minPrice !== "") params.min_price = minPrice;
       if (maxPrice !== "") params.max_price = maxPrice;
 
-
       const res = await userApi.get("/cars/filter", { params });
       const list = Array.isArray(res.data) ? res.data : [];
 
-      // ✅ normalize here too
       setCars(
         list.map((c) => ({
           ...c,
@@ -226,9 +287,7 @@ const CarsPage = () => {
   }, [allCarsForOptions]);
 
   const fuels = useMemo(() => {
-    const set = new Set(
-      allCarsForOptions.map((c) => c.fuel_type).filter(Boolean)
-    );
+    const set = new Set(allCarsForOptions.map((c) => c.fuel_type).filter(Boolean));
     return Array.from(set);
   }, [allCarsForOptions]);
 
@@ -254,14 +313,10 @@ const CarsPage = () => {
 
     switch (sortBy) {
       case "price-low":
-        result.sort(
-          (a, b) => Number(a.price_per_day) - Number(b.price_per_day)
-        );
+        result.sort((a, b) => Number(a.price_per_day) - Number(b.price_per_day));
         break;
       case "price-high":
-        result.sort(
-          (a, b) => Number(b.price_per_day) - Number(a.price_per_day)
-        );
+        result.sort((a, b) => Number(b.price_per_day) - Number(a.price_per_day));
         break;
       case "rating":
         result.sort((a, b) => Number(b.rating || 0) - Number(a.rating || 0));
@@ -280,9 +335,7 @@ const CarsPage = () => {
   // Helpers
   // -------------------------
   const toggleFavorite = (id) => {
-    setFavorites((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-    );
+    setFavorites((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
 
   const clearFilters = () => {
@@ -294,7 +347,6 @@ const CarsPage = () => {
     setMinPrice("");
     setMaxPrice("");
     setSortBy("featured");
-
   };
 
   const activeFiltersCount = [
@@ -304,7 +356,6 @@ const CarsPage = () => {
     selectedBadge !== "all",
     minPrice !== "" || maxPrice !== "",
   ].filter(Boolean).length;
-
 
   // -------------------------
   // Book Now
@@ -322,23 +373,47 @@ const CarsPage = () => {
         }
       })();
 
-    if (!t || !t.pickup_location || !t.drop_location || !t.start_date || !t.end_date) {
+    if (!t || !t.pickup_location || !t.drop_location || !t.start_date) {
       alert("Please fill booking form first on Home page ✅");
       navigate("/");
       return;
     }
 
-    navigate(
-      `/review-booking?car_id=${car.id}` +
-      `&pickup_location=${encodeURIComponent(t.pickup_location)}` +
-      `&drop_location=${encodeURIComponent(t.drop_location)}` +
-      `&start_date=${encodeURIComponent(t.start_date)}` +
-      `&start_time=${encodeURIComponent(t.start_time || "")}` +
-      `&end_date=${encodeURIComponent(t.end_date)}` +
-      `&booking_mode=${encodeURIComponent((t.booking_mode || "RENTAL").toUpperCase())}`, // ✅ ADD
-      { state: { car } }
-    );
+    const mode = normalizeMode(t.booking_mode);
+    const billing = normalizeBilling(t.billing_type, mode);
+    const end = mode === "TRANSFER" ? (t.start_date || "") : (t.end_date || "");
 
+    if (mode === "RENTAL" && !end) {
+      alert("Please select return date on Home page ✅");
+      navigate("/");
+      return;
+    }
+
+    // ✅ if PER_KM must have coords
+    if (billing === "PER_KM") {
+      if (!t.pickup_lat || !t.pickup_lng || !t.drop_lat || !t.drop_lng) {
+        alert("For PER_KM, please select Pickup & Drop from Google suggestions ✅");
+        navigate("/");
+        return;
+      }
+    }
+
+    const qs = new URLSearchParams();
+    qs.set("car_id", String(car.id));
+    qs.set("pickup_location", t.pickup_location || "");
+    qs.set("drop_location", t.drop_location || "");
+    qs.set("start_date", t.start_date || "");
+    qs.set("start_time", t.start_time || "");
+    qs.set("end_date", end);
+    qs.set("booking_mode", mode);
+    qs.set("billing_type", billing);
+
+    if (t.pickup_lat != null) qs.set("pickup_lat", String(t.pickup_lat));
+    if (t.pickup_lng != null) qs.set("pickup_lng", String(t.pickup_lng));
+    if (t.drop_lat != null) qs.set("drop_lat", String(t.drop_lat));
+    if (t.drop_lng != null) qs.set("drop_lng", String(t.drop_lng));
+
+    navigate(`/review-booking?${qs.toString()}`, { state: { car } });
   };
 
   return (
@@ -373,7 +448,9 @@ const CarsPage = () => {
               <span className="text-gray-400">|</span>
               <span>{trip.start_date}</span>
               <ArrowRight className="w-4 h-4" />
-              <span>{trip.end_date}</span>
+              <span>{trip.booking_mode === "TRANSFER" ? trip.start_date : trip.end_date}</span>
+              <span className="text-gray-400">|</span>
+              <span className="font-bold">{trip.billing_type || "PER_DAY"}</span>
             </div>
           )}
         </div>
@@ -420,16 +497,10 @@ const CarsPage = () => {
             </div>
 
             {/* FILTER GRID */}
-            <div
-              className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 ${showFilters ? "grid" : "hidden"
-                } lg:grid`}
-            >
-
+            <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 ${showFilters ? "grid" : "hidden"} lg:grid`}>
               {/* Badge */}
               <div className="lg:col-span-1">
-                <label className="block text-sm font-bold text-gray-700 mb-2">
-                  Car Type
-                </label>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Car Type</label>
                 <select
                   value={selectedBadge}
                   onChange={(e) => setSelectedBadge(e.target.value)}
@@ -442,12 +513,9 @@ const CarsPage = () => {
                 </select>
               </div>
 
-
               {/* Location */}
               <div className="lg:col-span-1">
-                <label className="block text-sm font-bold text-gray-700 mb-2">
-                  Location
-                </label>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Location</label>
                 <select
                   value={selectedLocation}
                   onChange={(e) => setSelectedLocation(e.target.value)}
@@ -455,18 +523,14 @@ const CarsPage = () => {
                 >
                   <option value="all">All</option>
                   {locations.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
+                    <option key={c} value={c}>{c}</option>
                   ))}
                 </select>
               </div>
 
               {/* Fuel */}
               <div className="lg:col-span-1">
-                <label className="block text-sm font-bold text-gray-700 mb-2">
-                  Fuel
-                </label>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Fuel</label>
                 <select
                   value={selectedFuel}
                   onChange={(e) => setSelectedFuel(e.target.value)}
@@ -474,18 +538,14 @@ const CarsPage = () => {
                 >
                   <option value="all">All</option>
                   {fuels.map((f) => (
-                    <option key={f} value={f}>
-                      {f}
-                    </option>
+                    <option key={f} value={f}>{f}</option>
                   ))}
                 </select>
               </div>
 
               {/* Seats */}
               <div className="lg:col-span-1">
-                <label className="block text-sm font-bold text-gray-700 mb-2">
-                  Seats
-                </label>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Seats</label>
                 <select
                   value={selectedSeats}
                   onChange={(e) => setSelectedSeats(e.target.value)}
@@ -493,18 +553,14 @@ const CarsPage = () => {
                 >
                   <option value="all">All</option>
                   {seatsOptions.map((s) => (
-                    <option key={s} value={String(s)}>
-                      {s} Seats
-                    </option>
+                    <option key={s} value={String(s)}>{s} Seats</option>
                   ))}
                 </select>
               </div>
 
               {/* Min Price */}
               <div className="lg:col-span-1">
-                <label className="block text-sm font-bold text-gray-700 mb-2">
-                  Min Price
-                </label>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Min Price</label>
                 <input
                   type="number"
                   value={minPrice}
@@ -516,9 +572,7 @@ const CarsPage = () => {
 
               {/* Max Price */}
               <div className="lg:col-span-1">
-                <label className="block text-sm font-bold text-gray-700 mb-2">
-                  Max Price
-                </label>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Max Price</label>
                 <input
                   type="number"
                   value={maxPrice}
@@ -533,10 +587,11 @@ const CarsPage = () => {
                 <button
                   onClick={clearFilters}
                   disabled={activeFiltersCount === 0 && !searchQuery}
-                  className={`w-full px-4 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 ${activeFiltersCount > 0 || searchQuery
-                    ? "bg-cyan-100 text-cyan-600 hover:bg-cyan-200"
-                    : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                    }`}
+                  className={`w-full px-4 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 ${
+                    activeFiltersCount > 0 || searchQuery
+                      ? "bg-cyan-100 text-cyan-600 hover:bg-cyan-200"
+                      : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                  }`}
                 >
                   <X className="w-5 h-5" />
                   <span>Clear</span>
@@ -548,8 +603,7 @@ const CarsPage = () => {
               <div className="mt-4 flex items-center gap-2 text-sm text-gray-600">
                 <Filter className="w-4 h-4" />
                 <span className="font-medium">
-                  {activeFiltersCount} filter
-                  {activeFiltersCount > 1 ? "s" : ""} active
+                  {activeFiltersCount} filter{activeFiltersCount > 1 ? "s" : ""} active
                 </span>
               </div>
             )}
@@ -561,10 +615,7 @@ const CarsPage = () => {
           <div>
             <h2 className="text-2xl font-bold text-gray-900">Cars</h2>
             <p className="text-gray-600 mt-1">
-              {loading
-                ? "Loading..."
-                : `${filteredCars.length} vehicle${filteredCars.length !== 1 ? "s" : ""
-                } found`}
+              {loading ? "Loading..." : `${filteredCars.length} vehicle${filteredCars.length !== 1 ? "s" : ""} found`}
             </p>
           </div>
           <div className="hidden md:flex items-center gap-4">
@@ -588,19 +639,14 @@ const CarsPage = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
             {filteredCars.map((car) => {
               const isFavorite = favorites.includes(car.id);
-              const isAvailable = Number(car.is_available) === 1; // ✅ FIX
-              const imageUrl = car.cars_image
-                ? `http://localhost:1000/public/${car.cars_image}`
-                : "";
+              const isAvailable = Number(car.is_available) === 1;
+              const imageUrl = car.cars_image ? `http://localhost:1000/public/${car.cars_image}` : "";
 
               return (
                 <div
                   key={car.id}
                   className={`car-card group bg-white rounded-3xl overflow-hidden shadow-md transition-all duration-500 border border-gray-100
-                    ${isAvailable
-                      ? "hover:shadow-2xl hover:-translate-y-2"
-                      : "opacity-60"
-                    }`}
+                    ${isAvailable ? "hover:shadow-2xl hover:-translate-y-2" : "opacity-60"}`}
                 >
                   {/* IMAGE */}
                   <div className="relative h-56 overflow-hidden bg-gray-100">
@@ -621,33 +667,31 @@ const CarsPage = () => {
                     {car.badge ? (
                       <div
                         className={`absolute top-4 left-4 text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-lg
-      ${String(car.badge).toUpperCase() === "PLATINUM"
-                            ? "bg-purple-600"
-                            : String(car.badge).toUpperCase() === "GOLD"
+                          ${
+                            String(car.badge).toUpperCase() === "PLATINUM"
+                              ? "bg-purple-600"
+                              : String(car.badge).toUpperCase() === "GOLD"
                               ? "bg-yellow-500 text-black"
                               : String(car.badge).toUpperCase() === "SILVER"
-                                ? "bg-gray-300 text-gray-900"
-                                : "bg-cyan-600"
+                              ? "bg-gray-300 text-gray-900"
+                              : "bg-cyan-600"
                           }`}
                       >
                         {car.badge}
                       </div>
                     ) : null}
 
-
                     <button
                       onClick={() => toggleFavorite(car.id)}
-                      className={`absolute top-4 right-4 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 backdrop-blur-md border ${isFavorite
-                        ? "bg-pink-500 border-pink-500 text-white scale-110"
-                        : "bg-white/80 border-white/50 text-gray-700 hover:bg-white hover:scale-110"
-                        }`}
+                      className={`absolute top-4 right-4 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 backdrop-blur-md border ${
+                        isFavorite
+                          ? "bg-pink-500 border-pink-500 text-white scale-110"
+                          : "bg-white/80 border-white/50 text-gray-700 hover:bg-white hover:scale-110"
+                      }`}
                     >
-                      <Heart
-                        className={`w-5 h-5 ${isFavorite ? "fill-current" : ""
-                          }`}
-                      />
+                      <Heart className={`w-5 h-5 ${isFavorite ? "fill-current" : ""}`} />
                     </button>
-                    {/* Hover button (View Details) ✅ */}
+
                     <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-4 transform transition-all duration-500 translate-y-full group-hover:translate-y-0 opacity-0 group-hover:opacity-100">
                       <button
                         onClick={() => goToDetails(car.id)}
@@ -657,9 +701,7 @@ const CarsPage = () => {
                         View Details <ArrowRight className="w-4 h-4" />
                       </button>
                     </div>
-
                   </div>
-
 
                   {/* CONTENT */}
                   <div className="p-5 space-y-4">
@@ -668,14 +710,10 @@ const CarsPage = () => {
                         <MapPin className="w-4 h-4 text-cyan-500" />
                         <span className="font-medium">{car.city || "-"}</span>
                       </div>
-                      <span className="text-gray-500 font-medium">
-                        {car.year || "-"}
-                      </span>
+                      <span className="text-gray-500 font-medium">{car.year || "-"}</span>
                     </div>
 
-                    <h3 className="text-xl font-bold text-gray-900 leading-tight">
-                      {car.name}
-                    </h3>
+                    <h3 className="text-xl font-bold text-gray-900 leading-tight">{car.name}</h3>
 
                     <p className="text-sm text-gray-600">
                       {car.brand} • {car.category_name || "Category"}
@@ -686,18 +724,14 @@ const CarsPage = () => {
                         <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
                           <Users className="w-4 h-4 text-gray-700" />
                         </div>
-                        <span className="font-medium">
-                          {car.seats || "-"} Seats
-                        </span>
+                        <span className="font-medium">{car.seats || "-"} Seats</span>
                       </div>
 
                       <div className="flex items-center gap-1.5 text-sm text-gray-600">
                         <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
                           <Fuel className="w-4 h-4 text-gray-700" />
                         </div>
-                        <span className="font-medium">
-                          {car.fuel_type || "-"}
-                        </span>
+                        <span className="font-medium">{car.fuel_type || "-"}</span>
                       </div>
                     </div>
 
@@ -705,33 +739,27 @@ const CarsPage = () => {
 
                     <div className="flex items-center justify-between">
                       <div className="space-y-1">
-                        <p className="text-xs text-gray-500 font-medium">
-                          Starting from
-                        </p>
+                        <p className="text-xs text-gray-500 font-medium">Starting from</p>
                         <p className="text-2xl font-black text-gray-900">
                           ₹{Number(car.price_per_day || 0).toLocaleString()}
-                          <span className="text-sm font-normal text-gray-500">
-                            /day
-                          </span>
+                          <span className="text-sm font-normal text-gray-500">/day</span>
                         </p>
                       </div>
 
                       <div className="flex items-center gap-1.5 bg-yellow-50 px-3 py-2 rounded-lg">
                         <Star className="w-4 h-4 text-yellow-500 fill-current" />
-                        <span className="text-sm font-bold text-gray-900">
-                          {car.rating || "0.0"}
-                        </span>
+                        <span className="text-sm font-bold text-gray-900">{car.rating || "0.0"}</span>
                       </div>
                     </div>
 
-                    {/* ✅ Disabled if not available */}
                     <button
                       disabled={!isAvailable}
                       onClick={() => isAvailable && handleBookNow(car)}
                       className={`w-full font-bold py-4 rounded-2xl transition-all duration-300 shadow-xl flex items-center justify-center gap-3
-                        ${isAvailable
-                          ? "bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-700 hover:to-teal-700 text-white hover:shadow-2xl transform hover:scale-105"
-                          : "bg-gray-200 text-gray-500 cursor-not-allowed opacity-70"
+                        ${
+                          isAvailable
+                            ? "bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-700 hover:to-teal-700 text-white hover:shadow-2xl transform hover:scale-105"
+                            : "bg-gray-200 text-gray-500 cursor-not-allowed opacity-70"
                         }`}
                     >
                       {isAvailable ? "Book Now" : "Not Available"}
@@ -746,12 +774,8 @@ const CarsPage = () => {
             <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
               <Search className="w-12 h-12 text-gray-400" />
             </div>
-            <h3 className="text-2xl font-bold text-gray-900 mb-2">
-              No cars found
-            </h3>
-            <p className="text-gray-600 mb-6">
-              Try adjusting your filters or search query
-            </p>
+            <h3 className="text-2xl font-bold text-gray-900 mb-2">No cars found</h3>
+            <p className="text-gray-600 mb-6">Try adjusting your filters or search query</p>
             <button
               onClick={clearFilters}
               className="bg-cyan-600 hover:bg-cyan-700 text-white px-8 py-3 rounded-xl font-bold transition-all transform hover:scale-105"

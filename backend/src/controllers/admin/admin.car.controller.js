@@ -31,6 +31,7 @@ exports.createCar = async (req, res) => {
       car_details,
       category_id,
       price_per_day,
+      price_per_km, 
       is_available,
       city,
       year,
@@ -43,7 +44,7 @@ exports.createCar = async (req, res) => {
     // ✅ insert
     await exe(
       `INSERT INTO cars 
-      (name, brand, car_details, cars_image, category_id, price_per_day, is_available, city, year, seats, fuel_type, rating, badge, is_active, created_at)
+      (name, brand, car_details, cars_image, category_id, price_per_day, price_per_km, is_available, city, year, seats, fuel_type, rating, badge, is_active, created_at)
       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,1,NOW())`,
       [
         name,
@@ -52,6 +53,7 @@ exports.createCar = async (req, res) => {
         fileName,
         Number(category_id),
         Number(price_per_day),
+        Number(price_per_km),
         Number(is_available ?? 1),
         city || "",
         year ? Number(year) : null,
@@ -125,6 +127,7 @@ exports.updateCar = async (req, res) => {
       car_details,
       category_id,
       price_per_day,
+      price_per_km,
       is_available,
       city,
       year,
@@ -142,6 +145,7 @@ exports.updateCar = async (req, res) => {
         cars_image=?,
         category_id=?,
         price_per_day=?,
+        price_per_km=?,
         is_available=?,
         city=?,
         year=?,
@@ -157,6 +161,7 @@ exports.updateCar = async (req, res) => {
         imageName,
         category_id,
         price_per_day,
+        price_per_km,
         Number(is_available ?? 1),
         city || "",
         year || null,

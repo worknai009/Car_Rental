@@ -1,20 +1,36 @@
 const { body } = require("express-validator");
 
 const createBookingValidation = [
-  body("car_id").notEmpty().isInt({ min: 1 }).withMessage("car_id is required"),
-  body("pickup_location").notEmpty().isString().withMessage("pickup_location is required"),
-  body("drop_location").notEmpty().isString().withMessage("drop_location is required"),
+  body("car_id")
+    .notEmpty()
+    .isInt({ min: 1 })
+    .withMessage("car_id is required"),
 
+  body("pickup_location")
+    .notEmpty()
+    .isString()
+    .withMessage("pickup_location is required"),
+
+  body("drop_location")
+    .notEmpty()
+    .isString()
+    .withMessage("drop_location is required"),
+
+  // ✅ Normalize booking_mode check (case-insensitive safe)
   body("booking_mode")
     .optional()
+    .customSanitizer((v) => String(v || "").toUpperCase())
     .isIn(["RENTAL", "TRANSFER"])
     .withMessage("booking_mode must be RENTAL or TRANSFER"),
 
-  body("start_date").notEmpty().isISO8601().withMessage("start_date must be YYYY-MM-DD"),
+  body("start_date")
+    .notEmpty()
+    .isISO8601()
+    .withMessage("start_date must be YYYY-MM-DD"),
 
-  // ✅ end_date required only when RENTAL
+  // ✅ end_date required only when RENTAL (case-insensitive safe)
   body("end_date").custom((value, { req }) => {
-    const mode = req.body.booking_mode || "RENTAL";
+    const mode = String(req.body.booking_mode || "RENTAL").toUpperCase();
     if (mode === "TRANSFER") return true; // optional
     if (!value) throw new Error("end_date is required for RENTAL");
     return true;
@@ -26,6 +42,26 @@ const createBookingValidation = [
     .withMessage("end_date must be YYYY-MM-DD"),
 
   body("start_time").optional().isString(),
+
+  // ✅ NEW: billing_type validation
+  body("billing_type")
+    .optional()
+    .customSanitizer((v) => String(v || "").toUpperCase())
+    .isIn(["PER_DAY", "PER_KM"])
+    .withMessage("billing_type must be PER_DAY or PER_KM"),
+
+  // ✅ NEW: distance_km required if billing_type = PER_KM
+  body("distance_km").custom((value, { req }) => {
+    const billing = String(req.body.billing_type || "PER_DAY").toUpperCase();
+
+    if (billing !== "PER_KM") return true; // ignore distance_km for PER_DAY
+
+    const km = Number(value);
+    if (!Number.isFinite(km) || km <= 0) {
+      throw new Error("distance_km is required for PER_KM (must be > 0)");
+    }
+    return true;
+  }),
 ];
 
 module.exports = { createBookingValidation };

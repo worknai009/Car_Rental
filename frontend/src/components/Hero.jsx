@@ -1,29 +1,145 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { MapPin, Calendar, Clock, Search, ArrowRight, Star, Shield, Zap } from "lucide-react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
+import {
+  MapPin,
+  Calendar,
+  Clock,
+  Search,
+  ArrowRight,
+  Star,
+  Shield,
+  Zap,
+} from "lucide-react";
 import ScrollReveal from "scrollreveal";
 import { useNavigate } from "react-router-dom";
 import userApi from "../utils/userApi";
 
+import { Autocomplete, useLoadScript } from "@react-google-maps/api";
+
+const libraries = ["places"];
+
+// ✅ Move this OUTSIDE Hero (important)
+const PlacesInput = ({
+  isLoaded,
+  value,
+  onChange,
+  onSelect,
+  placeholder,
+  inputClassName,
+  disabled,
+}) => {
+  const acRef = useRef(null);
+
+  // fallback if google not loaded
+  if (!isLoaded) {
+    return (
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        disabled={disabled}
+        className={inputClassName}
+        autoComplete="off"
+        required
+      />
+    );
+  }
+
+  return (
+    <Autocomplete
+      onLoad={(ac) => {
+        acRef.current = ac;
+      }}
+      onPlaceChanged={() => {
+        const place = acRef.current?.getPlace?.();
+
+        const address =
+          place?.formatted_address ||
+          place?.name ||
+          place?.vicinity ||
+          value ||
+          "";
+
+        const lat = place?.geometry?.location?.lat?.();
+        const lng = place?.geometry?.location?.lng?.();
+
+        // ✅ set text in input
+        onChange(address);
+
+        // ✅ save coords
+        onSelect?.({ address, lat, lng });
+      }}
+      options={{
+        // types: ["geocode"],
+        // componentRestrictions: { country: "in" },
+      }}
+    >
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        disabled={disabled}
+        className={inputClassName}
+        autoComplete="off"
+        required
+      />
+    </Autocomplete>
+  );
+};
+
 const Hero = () => {
   const navigate = useNavigate();
 
+  const [billingType, setBillingType] = useState("PER_DAY"); // PER_DAY | PER_KM
   const [pickupLocation, setPickupLocation] = useState("");
   const [dropupLocation, setDropupLocation] = useState("");
   const [pickupDate, setPickupDate] = useState("");
   const [pickupTime, setPickupTime] = useState("");
   const [returnDate, setReturnDate] = useState("");
-  const [bookingMode, setBookingMode] = useState("RENTAL"); // RENTAL | TRANSFER
+  const [bookingMode, setBookingMode] = useState("RENTAL");
 
-  const [stats, setStats] = useState({ totalCars: 0, availableCars: 0, avgRating: "4.9" });
+  const [pickupCoords, setPickupCoords] = useState({ lat: null, lng: null });
+  const [dropCoords, setDropCoords] = useState({ lat: null, lng: null });
+
+  const [stats, setStats] = useState({
+    totalCars: 0,
+    availableCars: 0,
+    avgRating: "4.9",
+  });
   const [statsLoading, setStatsLoading] = useState(true);
   const [searching, setSearching] = useState(false);
+
+  // ✅ Google script loader
+  const { isLoaded } = useLoadScript({
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_KEY || "",
+    libraries,
+  });
+
+  // ✅ Auto default billing type based on mode
+  useEffect(() => {
+    if (bookingMode === "TRANSFER") setBillingType("PER_KM"); // default
+    if (bookingMode === "RENTAL") setBillingType("PER_DAY"); // default
+  }, [bookingMode]);
 
   useEffect(() => {
     const sr = ScrollReveal({ reset: false, easing: "ease-in-out" });
     sr.reveal(".head-section", { scale: 0.9, duration: 1500 });
-    sr.reveal(".hero-reveal", { origin: "left", distance: "50px", duration: 1000 });
-    sr.reveal(".reveal-y", { origin: "bottom", distance: "100px", duration: 1500, interval: 200 });
-    sr.reveal(".feature-card", { origin: "bottom", distance: "50px", duration: 1000, interval: 150 });
+    sr.reveal(".hero-reveal", {
+      origin: "left",
+      distance: "50px",
+      duration: 1000,
+    });
+    sr.reveal(".reveal-y", {
+      origin: "bottom",
+      distance: "100px",
+      duration: 1500,
+      interval: 200,
+    });
+    sr.reveal(".feature-card", {
+      origin: "bottom",
+      distance: "50px",
+      duration: 1000,
+      interval: 150,
+    });
   }, []);
 
   useEffect(() => {
@@ -36,7 +152,9 @@ const Hero = () => {
         ]);
 
         const allCars = Array.isArray(carsRes.data) ? carsRes.data : [];
-        const availableCars = Array.isArray(availableRes.data) ? availableRes.data : [];
+        const availableCars = Array.isArray(availableRes.data)
+          ? availableRes.data
+          : [];
 
         const ratings = allCars
           .map((c) => Number(c.rating))
@@ -47,7 +165,11 @@ const Hero = () => {
             ? (ratings.reduce((a, b) => a + b, 0) / ratings.length).toFixed(1)
             : "4.9";
 
-        setStats({ totalCars: allCars.length, availableCars: availableCars.length, avgRating });
+        setStats({
+          totalCars: allCars.length,
+          availableCars: availableCars.length,
+          avgRating,
+        });
       } catch (err) {
         console.error("Hero stats error:", err);
       } finally {
@@ -71,7 +193,6 @@ const Hero = () => {
     [stats.availableCars, statsLoading]
   );
 
-  // When mode changes to TRANSFER, clear return date (not required)
   useEffect(() => {
     if (bookingMode === "TRANSFER") setReturnDate("");
   }, [bookingMode]);
@@ -105,26 +226,47 @@ const Hero = () => {
       }
     }
 
+    // ✅ IMPORTANT: If billing is PER_KM, require lat/lng
+    if (billingType === "PER_KM") {
+      if (!pickupCoords.lat || !dropCoords.lat) {
+        alert(
+          "Please select Pickup & Drop from Google suggestions (click a suggestion), not just typing."
+        );
+        return;
+      }
+    }
+
     const trip = {
       booking_mode: bookingMode,
+      billing_type: billingType,
       pickup_location: pickupLocation,
       drop_location: dropupLocation,
       start_date: pickupDate,
       start_time: pickupTime,
-      end_date: bookingMode === "TRANSFER" ? pickupDate : returnDate, // ✅ important
+      end_date: bookingMode === "TRANSFER" ? pickupDate : returnDate,
+      pickup_lat: pickupCoords.lat,
+      pickup_lng: pickupCoords.lng,
+      drop_lat: dropCoords.lat,
+      drop_lng: dropCoords.lng,
     };
 
     try {
       setSearching(true);
-
       localStorage.setItem("tripSearch", JSON.stringify(trip));
 
+      // ✅ Send everything in URL (coords + billing type)
       navigate(
-        `/cars?pickup_location=${encodeURIComponent(trip.pickup_location)}&drop_location=${encodeURIComponent(
-          trip.drop_location
-        )}&start_date=${encodeURIComponent(trip.start_date)}&start_time=${encodeURIComponent(
-          trip.start_time
-        )}&end_date=${encodeURIComponent(trip.end_date)}&booking_mode=${encodeURIComponent(trip.booking_mode)}`
+        `/cars?pickup_location=${encodeURIComponent(trip.pickup_location)}` +
+          `&drop_location=${encodeURIComponent(trip.drop_location)}` +
+          `&start_date=${encodeURIComponent(trip.start_date)}` +
+          `&start_time=${encodeURIComponent(trip.start_time)}` +
+          `&end_date=${encodeURIComponent(trip.end_date)}` +
+          `&booking_mode=${encodeURIComponent(trip.booking_mode)}` +
+          `&billing_type=${encodeURIComponent(trip.billing_type)}` +
+          `&pickup_lat=${encodeURIComponent(trip.pickup_lat ?? "")}` +
+          `&pickup_lng=${encodeURIComponent(trip.pickup_lng ?? "")}` +
+          `&drop_lat=${encodeURIComponent(trip.drop_lat ?? "")}` +
+          `&drop_lng=${encodeURIComponent(trip.drop_lng ?? "")}`
       );
     } finally {
       setSearching(false);
@@ -191,7 +333,6 @@ const Hero = () => {
 
             <form onSubmit={handleSearch} className="p-6 sm:p-8">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-5">
-                {/* Service */}
                 <div className="reveal-y space-y-2">
                   <label className="text-sm font-bold text-slate-700">Service</label>
                   <select
@@ -199,58 +340,65 @@ const Hero = () => {
                     onChange={(e) => setBookingMode(e.target.value)}
                     className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl"
                   >
-                    <option value="RENTAL">Rental     (Two-way)</option>
-                    <option value="TRANSFER">Transfer   (One-way)</option>
+                    <option value="RENTAL">Rental (Two-way)</option>
+                    <option value="TRANSFER">Transfer (One-way)</option>
                   </select>
                 </div>
 
-                {/* Pickup */}
+                <div className="reveal-y space-y-2">
+                  <label className="text-sm font-bold text-slate-700">Billing</label>
+                  <select
+                    value={billingType}
+                    onChange={(e) => setBillingType(e.target.value)}
+                    className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl"
+                  >
+                    <option value="PER_DAY">Per Day</option>
+                    <option value="PER_KM">Per KM</option>
+                  </select>
+                </div>
+
                 <div className="reveal-y space-y-2">
                   <label className="flex items-center gap-2 text-sm font-bold text-slate-700">
                     <MapPin className="w-4 h-4 text-emerald-600" />
                     Pickup
                   </label>
-                  <select
+
+                  <PlacesInput
+                    isLoaded={isLoaded}
                     value={pickupLocation}
-                    onChange={(e) => setPickupLocation(e.target.value)}
-                    className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl"
-                    required
-                  >
-                    <option value="" disabled>
-                      Select City
-                    </option>
-                    {["Pune", "Mumbai", "Delhi", "Bangalore", "Hyderabad", "Chennai"].map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(v) => {
+                      setPickupLocation(v);
+                      setPickupCoords({ lat: null, lng: null }); // ✅ reset coords if user changes typing
+                    }}
+                    onSelect={({ lat, lng }) =>
+                      setPickupCoords({ lat: lat ?? null, lng: lng ?? null })
+                    }
+                    placeholder="Enter pickup location"
+                    inputClassName="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl"
+                  />
                 </div>
 
-                {/* Drop */}
                 <div className="reveal-y space-y-2">
                   <label className="flex items-center gap-2 text-sm font-bold text-slate-700">
                     <MapPin className="w-4 h-4 text-emerald-600" />
                     Drop
                   </label>
-                  <select
+
+                  <PlacesInput
+                    isLoaded={isLoaded}
                     value={dropupLocation}
-                    onChange={(e) => setDropupLocation(e.target.value)}
-                    className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl"
-                    required
-                  >
-                    <option value="" disabled>
-                      Select City
-                    </option>
-                    {["Pune", "Mumbai", "Delhi", "Bangalore", "Hyderabad", "Chennai"].map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(v) => {
+                      setDropupLocation(v);
+                      setDropCoords({ lat: null, lng: null }); // ✅ reset coords if user changes typing
+                    }}
+                    onSelect={({ lat, lng }) =>
+                      setDropCoords({ lat: lat ?? null, lng: lng ?? null })
+                    }
+                    placeholder="Enter drop location"
+                    inputClassName="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl"
+                  />
                 </div>
 
-                {/* Pickup Date */}
                 <div className="reveal-y space-y-2">
                   <label className="flex items-center gap-2 text-sm font-bold text-slate-700">
                     <Calendar className="w-4 h-4 text-emerald-600" />
@@ -266,7 +414,6 @@ const Hero = () => {
                   />
                 </div>
 
-                {/* Pickup Time */}
                 <div className="reveal-y space-y-2">
                   <label className="flex items-center gap-2 text-sm font-bold text-slate-700">
                     <Clock className="w-4 h-4 text-emerald-600" />
@@ -281,7 +428,6 @@ const Hero = () => {
                   />
                 </div>
 
-                {/* Return Date */}
                 {bookingMode === "RENTAL" ? (
                   <div className="reveal-y space-y-2">
                     <label className="flex items-center gap-2 text-sm font-bold text-slate-700">

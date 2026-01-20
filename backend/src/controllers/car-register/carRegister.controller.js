@@ -7,6 +7,12 @@ const { exe } = require("../../config/db");
 
 exports.addCarRequest = async (req, res) => {
   try {
+    // ✅ basic check
+    if (!req.user?.id) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    // ✅ ensure folder
     const uploadDir = path.join(__dirname, "../../../public/uploads/cars");
     if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
@@ -14,8 +20,13 @@ exports.addCarRequest = async (req, res) => {
       if (!file) return null;
       const filename = Date.now() + "-" + file.name;
       await file.mv(path.join(uploadDir, filename));
-      return `/uploads/cars/${filename}`; // ✅ important
+      return `/uploads/cars/${filename}`;
     };
+
+    // ✅ IMPORTANT: if files missing, express-fileupload will give undefined
+    if (!req.files?.cars_image) {
+      return res.status(400).json({ message: "Car image is required" });
+    }
 
     const cars_image = await saveFile(req.files?.cars_image);
     const rc_book = await saveFile(req.files?.rc_book);
@@ -33,28 +44,36 @@ exports.addCarRequest = async (req, res) => {
       seats,
       fuel_type,
       price_per_day,
+      price_per_km,
       requested_category_id,
     } = req.body;
 
+    // ✅ optional: validation
+    if (!name || !brand || !category_id || !requested_category_id) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    // ✅ FIX: 18 placeholders now ✅
     await exe(
       `INSERT INTO car_registration_requests
       (car_user_id, name, brand, category_id, car_details, city, year, seats, fuel_type,
-       cars_image, requested_category_id, price_per_day,
+       cars_image, requested_category_id, price_per_day, price_per_km,
        rc_book, insurance_copy, puc_certificate, id_proof, status)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [
         req.user.id,
         name,
         brand,
         category_id,
-        car_details,
-        city,
-        year,
-        seats,
-        fuel_type,
+        car_details || null,
+        city || null,
+        year || null,
+        seats || null,
+        fuel_type || null,
         cars_image,
         requested_category_id,
-        price_per_day,
+        price_per_day || null,
+        price_per_km || null,
         rc_book,
         insurance_copy,
         puc_certificate,
@@ -63,10 +82,10 @@ exports.addCarRequest = async (req, res) => {
       ]
     );
 
-    res.json({ message: "Car submitted for admin approval ✅" });
+    return res.json({ message: "Car submitted for admin approval ✅" });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Failed to submit car" });
+    console.error("addCarRequest error:", err);
+    return res.status(500).json({ message: err?.message || "Failed to submit car" });
   }
 };
 
@@ -94,6 +113,7 @@ exports.getMyCars = async (req, res) => {
         requested_category_id,
         approved_category_id,
         price_per_day,
+        price_per_km,
         status,
         admin_remark,
         created_at,
@@ -130,6 +150,7 @@ exports.getMyCarsAll = async (req, res) => {
         requested_category_id,
         approved_category_id,
         price_per_day,
+        price_per_km,
         rc_book,
         insurance_copy,
         puc_certificate,

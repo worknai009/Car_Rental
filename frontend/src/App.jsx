@@ -17,6 +17,7 @@ import MyBookings from "./pages/MyBookings";
 import CarDetails from "./pages/CarDetails";
 import ResetPassword from "./pages/ResetPassword.jsx";
 import ForgotPassword from "./pages/ForgotPassword.jsx";
+import EventsPage from "./pages/EventsPage";
 
 
 // ADMIN PAGES
@@ -95,7 +96,7 @@ const App = () => {
 
         {/* ✅ PROTECTED (as you want) */}
         <Route path="/cars" element={<Car />} />
-
+        <Route path="/events" element={<EventsPage />} />
         <Route path="/cars/:id" element={<CarDetails />} />
 
 

@@ -19,6 +19,7 @@ const EditCar = () => {
     car_details: "",
     category_id: "",
     price_per_day: "",
+    price_per_km: "",
     is_available: 1,
 
     city: "",
@@ -53,6 +54,7 @@ const EditCar = () => {
       car_details: c.car_details ?? "",
       category_id: c.category_id ?? "",
       price_per_day: c.price_per_day ?? "",
+      price_per_km: c.price_per_km ?? "",
       is_available: Number(c.is_available ?? 1),
 
       city: c.city ?? "",
@@ -119,6 +121,8 @@ const EditCar = () => {
         </select>
 
         <input className="border p-2 rounded" name="price_per_day" value={form.price_per_day} onChange={onChange} placeholder="Price per day" required />
+        <input className="border p-2 rounded" name="price_per_km" value={form.price_per_km} onChange={onChange} placeholder="Price per km" required />
+
 
         <select className="border p-2 rounded" name="is_available" value={form.is_available} onChange={onChange}>
           <option value={1}>Available</option>
