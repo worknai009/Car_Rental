@@ -11,6 +11,7 @@ router.use("/feedback", require("./feedback.routes"));
 router.use("/contact", require("./contact.routes"));
 // in routes/user/booking.routes.js (or wherever /bookings routes are mounted)
 router.use("/bookings", require("./cancelRequest.routes"));
+router.use("/event-requests", require("./eventRequest.routes"));
 
 
 module.exports = router;

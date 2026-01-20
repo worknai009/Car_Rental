@@ -35,6 +35,7 @@ import CancelRequests from "./pages/admin/CancelRequests";
 import FeedbackList from "./pages/admin/FeedbackList.jsx";
 import CarRegisterRequests from "./pages/admin/CarRegisterRequests.jsx";
 import CarRegisterUsers from "./pages/admin/CarRegisterUsers.jsx"
+import EventRequests from "./pages/admin/EventRequests";
 
 
 
@@ -160,6 +161,7 @@ const App = () => {
         <Route path="feedback" element={<FeedbackList />} />
         <Route path="car-register-requests" element={<CarRegisterRequests />} />
         <Route path="car-register-users" element={<CarRegisterUsers />} />
+        <Route path="event-requests" element={<EventRequests />} />
       </Route>
 
 

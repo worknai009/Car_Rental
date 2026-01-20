@@ -3,6 +3,7 @@ const express = require("express");
 const router = express.Router();
 const adminController = require("../../controllers/admin/admin.controller");
 const jwtUtils = require("../../utils/jwt");
+const { route } = require("./eventRequest.routes");
 
 router.use("/auth", require("./admin.auth.routes"));
 router.use("/users", require("./admin.user.routes"));
@@ -16,6 +17,7 @@ router.use("/dashboard", require("./admin.dashboard.routes")); // ✅ NEW
 router.use("/cancel-requests", require("./cancelRequest.admin.routes"));
 router.use("/car-requests", require("./adminCarRequestsRoutes"));
 router.use("/car-register-users", require("./admin.carRegisterUsers.routes"));
+router.use("/event-requests", require("./eventRequest.routes")); // ✅ NEW
 
 
 module.exports = router;

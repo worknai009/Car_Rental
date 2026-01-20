@@ -1,500 +1,439 @@
-import React, { useEffect, useMemo, useState } from "react";
-import userApi from "../utils/userApi";
+// src/pages/EventsPage.jsx
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
-  CalendarDays,
   MapPin,
+  CalendarDays,
+  Phone,
+  Car,
   Users,
-  Search,
-  X,
-  Ticket,
-  ArrowRight,
+  ClipboardList,
+  Loader2,
 } from "lucide-react";
+import userApi from "../utils/userApi";
+import { Autocomplete, useLoadScript } from "@react-google-maps/api";
 
-const API_BASE = "http://localhost:1000";
+const libraries = ["places"];
 
-// fallback demo data (if API not ready)
-const DEMO_EVENTS = [
-  {
-    id: 1,
-    title: "Luxury Car Expo 2026",
-    city: "Pune",
-    venue: "Phoenix Mall",
-    start_datetime: "2026-02-01T10:00:00",
-    end_datetime: "2026-02-01T18:00:00",
-    price: 299,
-    capacity: 200,
-    booked_count: 46,
-    image: "/uploads/events/demo-event-1.jpg",
-    description: "Showcase of premium and luxury cars with live demos.",
-  },
-  {
-    id: 2,
-    title: "Road Trip Meetup",
-    city: "Mumbai",
-    venue: "BKC Grounds",
-    start_datetime: "2026-02-05T16:00:00",
-    end_datetime: "2026-02-05T20:00:00",
-    price: 0,
-    capacity: 150,
-    booked_count: 20,
-    image: "/uploads/events/demo-event-2.jpg",
-    description: "Meet fellow riders, network, and plan trips together.",
-  },
-];
+function toNum(v) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
 
-const safe = (v) => (v === null || v === undefined || v === "" ? "-" : String(v));
+// ✅ Haversine KM (straight-line) – no extra API cost
+function haversineKm(a, b) {
+  if (!a?.lat || !a?.lng || !b?.lat || !b?.lng) return null;
+  const R = 6371;
+  const toRad = (x) => (x * Math.PI) / 180;
 
-const makeFileUrl = (p) => {
-  if (!p) return "";
-  let x = String(p).replace(/\\/g, "/");
-  if (x.startsWith("http://") || x.startsWith("https://")) return x;
-  if (!x.startsWith("/")) x = "/" + x;
-  return API_BASE + x; // expects static mapped like /uploads/...
-};
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const lat1 = toRad(a.lat);
+  const lat2 = toRad(b.lat);
 
-const formatDateTime = (iso) => {
-  if (!iso) return "-";
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return safe(iso);
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  const hh = String(d.getHours()).padStart(2, "0");
-  const mi = String(d.getMinutes()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd} ${hh}:${mi}`;
-};
+  const s =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
 
-const Modal = ({ open, title, onClose, children }) => {
-  if (!open) return null;
+  const c = 2 * Math.atan2(Math.sqrt(s), Math.sqrt(1 - s));
+  return Number((R * c).toFixed(2));
+}
+
+// ✅ Google Places input (fixes “one letter then stops” issues by keeping input controlled)
+const PlacesInput = ({
+  isLoaded,
+  value,
+  onChange,
+  onSelect,
+  placeholder,
+  disabled,
+}) => {
+  const acRef = useRef(null);
+
+  // fallback if google not loaded
+  if (!isLoaded) {
+    return (
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        disabled={disabled}
+        className="w-full px-4 py-3 rounded-2xl border-2 border-gray-200 bg-gray-50 focus:bg-white outline-none disabled:opacity-60"
+        autoComplete="off"
+      />
+    );
+  }
+
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onMouseDown={onClose}>
-      <div className="w-full max-w-2xl bg-white rounded-3xl overflow-hidden shadow-xl" onMouseDown={(e) => e.stopPropagation()}>
-        <div className="px-6 py-4 border-b flex items-center justify-between">
-          <div className="font-black text-gray-900">{title}</div>
-          <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100" type="button">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-        <div className="p-6">{children}</div>
-      </div>
-    </div>
+    <Autocomplete
+      onLoad={(ac) => (acRef.current = ac)}
+      onPlaceChanged={() => {
+        const place = acRef.current?.getPlace?.();
+
+        const address =
+          place?.formatted_address ||
+          place?.name ||
+          place?.vicinity ||
+          value ||
+          "";
+
+        const lat = place?.geometry?.location?.lat?.();
+        const lng = place?.geometry?.location?.lng?.();
+
+        // set text
+        onChange(address);
+
+        // save coords
+        onSelect?.({ address, lat, lng });
+      }}
+      options={{
+        // componentRestrictions: { country: "in" },
+        fields: ["formatted_address", "name", "geometry.location", "vicinity"],
+      }}
+    >
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        disabled={disabled}
+        className="w-full px-4 py-3 rounded-2xl border-2 border-gray-200 bg-gray-50 focus:bg-white outline-none disabled:opacity-60"
+        autoComplete="off"
+      />
+    </Autocomplete>
   );
 };
 
+const todayYYYYMMDD = () => new Date().toISOString().split("T")[0];
+
+const statusPill = (status) => {
+  const s = String(status || "PENDING").toUpperCase();
+  if (s === "CONFIRMED") return "bg-green-100 text-green-700";
+  if (s === "CANCELLED") return "bg-red-100 text-red-700";
+  return "bg-yellow-100 text-yellow-700";
+};
+
 export default function EventsPage() {
-  const [events, setEvents] = useState([]);
-  const [myBookings, setMyBookings] = useState([]);
-  const [loadingEvents, setLoadingEvents] = useState(true);
-  const [loadingBookings, setLoadingBookings] = useState(true);
+  const navigate = useNavigate();
 
-  // filters
-  const [q, setQ] = useState("");
-  const [city, setCity] = useState("all");
-  const [date, setDate] = useState(""); // yyyy-mm-dd
-  const [maxPrice, setMaxPrice] = useState("");
+  const { isLoaded } = useLoadScript({
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_KEY || "",
+    libraries,
+  });
 
-  // booking modal
-  const [open, setOpen] = useState(false);
-  const [selected, setSelected] = useState(null);
-  const [qty, setQty] = useState(1);
-  const [note, setNote] = useState("");
+  const [form, setForm] = useState({
+    event_type: "WEDDING", // WEDDING/CORPORATE/TOUR/PARTY/OTHER
+    start_date: "",
+    end_date: "",
+    start_time: "",
+    city: "",
+
+    cars_qty: 1,
+    badge: "ANY", // ANY/PLATINUM/GOLD/SILVER
+    min_seats: 4,
+
+    billing_type: "PER_DAY", // PER_DAY / PER_KM / PACKAGE
+    distance_km: "",
+
+    pickup_location: "",
+    drop_location: "",
+
+    phone: "",
+    note: "",
+  });
+
+  const [coords, setCoords] = useState({
+    pickup: { lat: null, lng: null },
+    drop: { lat: null, lng: null },
+  });
+
   const [submitting, setSubmitting] = useState(false);
+  const [apiError, setApiError] = useState("");
 
-  const fetchEvents = async () => {
-    try {
-      setLoadingEvents(true);
+  // ✅ NEW: my bookings state
+  const [showMyBookings, setShowMyBookings] = useState(false);
+  const [myBookings, setMyBookings] = useState([]);
+  const [loadingMyBookings, setLoadingMyBookings] = useState(false);
 
-      // ✅ if backend ready, use this:
-      // const res = await userApi.get("/events");
-      // const list = Array.isArray(res.data) ? res.data : [];
-      // setEvents(list);
-
-      // ✅ demo fallback:
-      setEvents(DEMO_EVENTS);
-    } catch (e) {
-      console.error(e);
-      setEvents(DEMO_EVENTS);
-    } finally {
-      setLoadingEvents(false);
-    }
-  };
-
-  const fetchMyBookings = async () => {
-    try {
-      setLoadingBookings(true);
-
-      // ✅ if backend ready:
-      // const res = await userApi.get("/events/my-bookings");
-      // setMyBookings(Array.isArray(res.data) ? res.data : []);
-
-      // ✅ demo fallback:
-      setMyBookings([]);
-    } catch (e) {
-      console.error(e);
-      setMyBookings([]);
-    } finally {
-      setLoadingBookings(false);
-    }
-  };
+  // ✅ auto km if PER_KM and coords available
+  const autoKm = useMemo(() => {
+    if (form.billing_type !== "PER_KM") return null;
+    return haversineKm(coords.pickup, coords.drop);
+  }, [coords, form.billing_type]);
 
   useEffect(() => {
-    fetchEvents();
-    fetchMyBookings();
-  }, []);
-
-  const cities = useMemo(() => {
-    const s = new Set(events.map((e) => e.city).filter(Boolean));
-    return Array.from(s);
-  }, [events]);
-
-  const filtered = useMemo(() => {
-    let list = [...events];
-
-    if (q.trim()) {
-      const x = q.trim().toLowerCase();
-      list = list.filter(
-        (e) =>
-          (e.title || "").toLowerCase().includes(x) ||
-          (e.venue || "").toLowerCase().includes(x)
-      );
+    if (form.billing_type === "PER_KM" && autoKm) {
+      setForm((p) => ({ ...p, distance_km: String(autoKm) }));
     }
+  }, [autoKm, form.billing_type]);
 
-    if (city !== "all") list = list.filter((e) => e.city === city);
-
-    if (date) {
-      list = list.filter((e) => {
-        const d = new Date(e.start_datetime);
-        const yyyy = d.getFullYear();
-        const mm = String(d.getMonth() + 1).padStart(2, "0");
-        const dd = String(d.getDate()).padStart(2, "0");
-        return `${yyyy}-${mm}-${dd}` === date;
-      });
+  // when billing is not PER_KM, make drop optional + clear coords safely
+  useEffect(() => {
+    if (form.billing_type !== "PER_KM") {
+      setForm((p) => ({ ...p, distance_km: "" }));
+      setCoords((p) => ({ ...p, drop: { lat: null, lng: null } }));
     }
+  }, [form.billing_type]);
 
-    if (maxPrice !== "") {
-      const mp = Number(maxPrice);
-      if (!Number.isNaN(mp)) list = list.filter((e) => Number(e.price || 0) <= mp);
-    }
-
-    // newest first by id
-    list.sort((a, b) => Number(b.id) - Number(a.id));
-    return list;
-  }, [events, q, city, date, maxPrice]);
-
-  const seatsLeft = (e) => {
-    const cap = Number(e.capacity || 0);
-    const booked = Number(e.booked_count || 0);
-    const left = Math.max(0, cap - booked);
-    return left;
+  const onChange = (e) => {
+    const { name, value } = e.target;
+    setForm((p) => ({ ...p, [name]: value }));
   };
 
-  const openBooking = (e) => {
-    setSelected(e);
-    setQty(1);
-    setNote("");
-    setOpen(true);
+  const validate = () => {
+    const token = localStorage.getItem("token");
+    if (!token) return "Please login first";
+
+    if (!form.event_type) return "Select event type";
+    if (!form.city.trim()) return "City is required";
+    if (!form.start_date) return "Start date is required";
+    if (!form.end_date) return "End date is required";
+    if (!form.start_time) return "Start time is required";
+
+    const sd = new Date(form.start_date);
+    const ed = new Date(form.end_date);
+    if (Number.isNaN(sd.getTime()) || Number.isNaN(ed.getTime())) return "Invalid dates";
+    if (ed < sd) return "End date must be after start date";
+
+    const carsQty = Number(form.cars_qty);
+    if (!Number.isFinite(carsQty) || carsQty < 1) return "Cars needed must be >= 1";
+
+    const minSeats = Number(form.min_seats);
+    if (!Number.isFinite(minSeats) || minSeats < 2) return "Min seats must be >= 2";
+
+    if (!form.pickup_location.trim()) return "Pickup location is required";
+
+    const phone = String(form.phone || "").trim();
+    if (!phone) return "Phone is required";
+    const digits = phone.replace(/\D/g, "");
+    if (digits.length < 10) return "Phone number must be at least 10 digits";
+
+    if (form.billing_type === "PER_KM") {
+      if (!coords.pickup.lat || !coords.pickup.lng || !coords.drop.lat || !coords.drop.lng) {
+        return "Select Pickup & Drop from Google suggestions (click a suggestion) to get lat/lng";
+      }
+      const km = toNum(form.distance_km);
+      if (!km || km <= 0) return "Distance KM is required for PER_KM";
+    }
+
+    return null;
   };
 
-  const total = useMemo(() => {
-    const p = Number(selected?.price || 0);
-    return p * Number(qty || 1);
-  }, [selected, qty]);
+  // ✅ NEW: fetch my event bookings
+  const fetchMyBookings = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      alert("Please login first");
+      navigate("/login");
+      return;
+    }
 
-  const submitBooking = async () => {
-    if (!selected) return;
+    try {
+      setLoadingMyBookings(true);
+      const res = await userApi.get("/event-requests/my-requests");
+      setMyBookings(Array.isArray(res.data) ? res.data : []);
+      setShowMyBookings(true);
+    } catch (e) {
+      console.error("Fetch my bookings error:", e);
+      alert(e?.response?.data?.message || "Failed to load my bookings");
+    } finally {
+      setLoadingMyBookings(false);
+    }
+  };
 
-    const left = seatsLeft(selected);
-    if (left <= 0) {
-      alert("Sold out ❌");
+  const submit = async () => {
+    setApiError("");
+    const err = validate();
+    if (err) {
+      if (err === "Please login first") {
+        alert(err);
+        navigate("/login");
+        return;
+      }
+      alert(err);
       return;
     }
-    if (qty < 1) {
-      alert("Quantity must be at least 1");
-      return;
-    }
-    if (qty > left) {
-      alert(`Only ${left} seats left`);
-      return;
-    }
+
+    const payload = {
+      event_type: String(form.event_type || "OTHER").toUpperCase(),
+
+      start_date: form.start_date,
+      end_date: form.end_date,
+      start_time: form.start_time,
+
+      city: form.city,
+
+      cars_qty: Number(form.cars_qty),
+      badge: String(form.badge || "ANY").toUpperCase(),
+      min_seats: Number(form.min_seats),
+
+      billing_type: String(form.billing_type || "PER_DAY").toUpperCase(),
+      distance_km: form.billing_type === "PER_KM" ? Number(form.distance_km) : null,
+
+      pickup_location: form.pickup_location,
+      pickup_lat: coords.pickup.lat,
+      pickup_lng: coords.pickup.lng,
+
+      drop_location: form.billing_type === "PER_KM" ? form.drop_location : null,
+      drop_lat: form.billing_type === "PER_KM" ? coords.drop.lat : null,
+      drop_lng: form.billing_type === "PER_KM" ? coords.drop.lng : null,
+
+      phone: String(form.phone || "").trim(),
+      note: form.note?.trim() ? form.note.trim() : null,
+    };
 
     try {
       setSubmitting(true);
 
-      // ✅ backend call when ready:
-      // await userApi.post(`/events/${selected.id}/book`, { qty, note });
+      const res = await userApi.post("/event-requests/request", payload);
 
-      alert("Booking successful ✅ (demo)");
-      setOpen(false);
+      alert(res?.data?.message || "Event request submitted ✅");
+
+      // optional reset
+      setForm({
+        event_type: "WEDDING",
+        start_date: "",
+        end_date: "",
+        start_time: "",
+        city: "",
+        cars_qty: 1,
+        badge: "ANY",
+        min_seats: 4,
+        billing_type: "PER_DAY",
+        distance_km: "",
+        pickup_location: "",
+        drop_location: "",
+        phone: "",
+        note: "",
+      });
+      setCoords({
+        pickup: { lat: null, lng: null },
+        drop: { lat: null, lng: null },
+      });
+
+      // ✅ refresh history after submit
       fetchMyBookings();
+
+      navigate("/");
     } catch (e) {
-      console.error(e);
-      alert(e?.response?.data?.message || "Booking failed");
+      console.error("Event request submit error:", e);
+
+      const msg =
+        e?.response?.data?.message ||
+        (Array.isArray(e?.response?.data?.errors) ? "Validation failed" : "") ||
+        "Submit failed";
+
+      setApiError(
+        Array.isArray(e?.response?.data?.errors)
+          ? `${msg}: ${e.response.data.errors?.[0]?.msg || ""}`
+          : msg
+      );
+
+      alert(
+        Array.isArray(e?.response?.data?.errors)
+          ? `${msg}\n${(e.response.data.errors || [])
+              .map((x) => `• ${x.msg}`)
+              .join("\n")}`
+          : msg
+      );
     } finally {
       setSubmitting(false);
     }
   };
 
-  const clearFilters = () => {
-    setQ("");
-    setCity("all");
-    setDate("");
-    setMaxPrice("");
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white pt-28 pb-16">
-      <Modal
-        open={open}
-        title={selected ? `Book: ${selected.title}` : "Book Event"}
-        onClose={() => setOpen(false)}
-      >
-        {!selected ? null : (
-          <div className="space-y-5">
-            <div className="rounded-2xl border bg-gray-50 p-4">
-              <div className="font-black text-gray-900">{selected.title}</div>
-              <div className="text-sm text-gray-600 mt-1 flex flex-wrap gap-3">
-                <span className="inline-flex items-center gap-1">
-                  <MapPin className="w-4 h-4 text-cyan-600" />
-                  {safe(selected.city)} • {safe(selected.venue)}
-                </span>
-                <span className="inline-flex items-center gap-1">
-                  <CalendarDays className="w-4 h-4 text-cyan-600" />
-                  {formatDateTime(selected.start_datetime)} → {formatDateTime(selected.end_datetime)}
-                </span>
-                <span className="inline-flex items-center gap-1">
-                  <Users className="w-4 h-4 text-cyan-600" />
-                  Seats left: {seatsLeft(selected)}
-                </span>
-              </div>
-            </div>
-
-            <div className="grid sm:grid-cols-2 gap-4">
-              <div>
-                <div className="text-xs font-bold text-gray-500 mb-1">Tickets</div>
-                <input
-                  type="number"
-                  min={1}
-                  value={qty}
-                  onChange={(e) => setQty(Number(e.target.value))}
-                  className="w-full border rounded-2xl px-4 py-3 bg-white"
-                />
-              </div>
-              <div>
-                <div className="text-xs font-bold text-gray-500 mb-1">Price</div>
-                <div className="w-full border rounded-2xl px-4 py-3 bg-white font-black text-gray-900">
-                  ₹{Number(selected.price || 0)} / ticket
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <div className="text-xs font-bold text-gray-500 mb-1">Note (optional)</div>
-              <textarea
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                className="w-full border rounded-2xl px-4 py-3 bg-white min-h-[90px]"
-                placeholder="Any special note..."
-              />
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div className="text-sm text-gray-600">Total</div>
-              <div className="text-2xl font-black text-gray-900">₹{total}</div>
-            </div>
-
-            <button
-              onClick={submitBooking}
-              disabled={submitting}
-              className="w-full bg-black text-white rounded-2xl py-3 font-bold disabled:opacity-60"
-              type="button"
-            >
-              {submitting ? "Booking..." : "Confirm Booking"}
-            </button>
-          </div>
-        )}
-      </Modal>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
-        {/* Header */}
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <div className="text-4xl font-black text-gray-900">Events</div>
-            <div className="text-gray-600 mt-1">
-              Book events like expos, meetups, and trips.
-            </div>
-          </div>
-
-          <button
-            onClick={clearFilters}
-            className="px-4 py-2 rounded-xl border bg-white text-sm font-semibold hover:bg-gray-50"
-            type="button"
-          >
-            Clear Filters
-          </button>
+    <div className="min-h-screen bg-gray-50 pt-28 pb-16 px-4">
+      <div className="max-w-3xl mx-auto bg-white rounded-3xl shadow border p-6 space-y-6">
+        <div className="flex items-center gap-2">
+          <ClipboardList className="w-6 h-6 text-cyan-600" />
+          <h1 className="text-2xl font-black text-gray-900">Book Cars for Event</h1>
         </div>
 
-        {/* Filters */}
-        <div className="bg-white rounded-3xl border border-gray-200/60 shadow-sm p-5">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="relative">
-              <Search className="w-5 h-5 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" />
-              <input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="Search title / venue..."
-                className="w-full pl-11 pr-4 py-3 rounded-2xl border bg-gray-50 focus:bg-white outline-none"
-              />
+        {apiError ? (
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-red-700 font-semibold">
+            {apiError}
+          </div>
+        ) : null}
+
+        {/* ✅ NEW BUTTON (ONLY ADDED THIS) */}
+        <button
+          onClick={fetchMyBookings}
+          disabled={loadingMyBookings}
+          className="w-full py-3 rounded-2xl border border-gray-200 bg-white font-bold hover:bg-gray-50 flex items-center justify-center gap-2 disabled:opacity-60"
+          type="button"
+        >
+          {loadingMyBookings ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin" />
+              Loading My Bookings...
+            </>
+          ) : (
+            <>
+              <CalendarDays className="w-5 h-5" />
+              Show My Event Bookings
+            </>
+          )}
+        </button>
+
+        {/* ✅ NEW: HISTORY SECTION */}
+        {showMyBookings ? (
+          <div className="rounded-3xl border bg-gray-50 p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="font-black text-gray-900">My Event Bookings</div>
+              <button
+                onClick={() => setShowMyBookings(false)}
+                className="text-sm font-bold text-gray-600 hover:text-black"
+                type="button"
+              >
+                Hide
+              </button>
             </div>
 
-            <select
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              className="w-full px-4 py-3 rounded-2xl border bg-gray-50 focus:bg-white outline-none"
-            >
-              <option value="all">All Cities</option>
-              {cities.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="w-full px-4 py-3 rounded-2xl border bg-gray-50 focus:bg-white outline-none"
-            />
-
-            <input
-              type="number"
-              value={maxPrice}
-              onChange={(e) => setMaxPrice(e.target.value)}
-              placeholder="Max price (₹)"
-              className="w-full px-4 py-3 rounded-2xl border bg-gray-50 focus:bg-white outline-none"
-            />
-          </div>
-
-          <div className="mt-4 text-sm text-gray-600">
-            Showing <b>{filtered.length}</b> event{filtered.length === 1 ? "" : "s"}
-          </div>
-        </div>
-
-        {/* Events List */}
-        {loadingEvents ? (
-          <div className="p-6 rounded-3xl bg-white border shadow-sm text-gray-600">
-            Loading events...
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="p-6 rounded-3xl bg-white border shadow-sm text-gray-600">
-            No events found.
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-7">
-            {filtered.map((e) => {
-              const left = seatsLeft(e);
-              const soldOut = left <= 0;
-              const img = e.image ? makeFileUrl(e.image) : "";
-
-              return (
-                <div
-                  key={e.id}
-                  className={`rounded-3xl overflow-hidden bg-white border border-gray-200/60 shadow-sm transition-all ${
-                    soldOut ? "opacity-70" : "hover:shadow-lg hover:-translate-y-1"
-                  }`}
-                >
-                  <div className="h-44 bg-gray-100 relative">
-                    {img ? (
-                      <img src={img} alt={e.title} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-400">
-                        No image
-                      </div>
-                    )}
-
-                    <div className="absolute top-4 left-4 bg-cyan-600 text-white px-3 py-1.5 rounded-full text-xs font-bold shadow">
-                      {e.city || "CITY"}
-                    </div>
-
-                    <div className="absolute top-4 right-4 bg-black/80 text-white px-3 py-1.5 rounded-full text-xs font-bold shadow">
-                      {Number(e.price || 0) === 0 ? "FREE" : `₹${e.price}`}
-                    </div>
-                  </div>
-
-                  <div className="p-5 space-y-4">
-                    <div className="font-black text-gray-900 text-lg">{e.title}</div>
-
-                    <div className="text-sm text-gray-600 space-y-1">
-                      <div className="flex items-center gap-2">
-                        <MapPin className="w-4 h-4 text-cyan-600" />
-                        <span>{safe(e.venue)}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <CalendarDays className="w-4 h-4 text-cyan-600" />
-                        <span>{formatDateTime(e.start_datetime)}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Users className="w-4 h-4 text-cyan-600" />
-                        <span>{left} seats left</span>
-                      </div>
-                    </div>
-
-                    {e.description ? (
-                      <div className="text-sm text-gray-700 line-clamp-2">{e.description}</div>
-                    ) : null}
-
-                    <button
-                      disabled={soldOut}
-                      onClick={() => !soldOut && openBooking(e)}
-                      className={`w-full py-3 rounded-2xl font-bold flex items-center justify-center gap-2 ${
-                        soldOut
-                          ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-                          : "bg-gradient-to-r from-cyan-600 to-teal-600 text-white hover:opacity-95"
-                      }`}
-                      type="button"
-                    >
-                      <Ticket className="w-5 h-5" />
-                      {soldOut ? "Sold Out" : "Book Now"}
-                      {!soldOut ? <ArrowRight className="w-4 h-4" /> : null}
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* My Bookings */}
-        <div className="space-y-3">
-          <div className="text-2xl font-black text-gray-900">My Event Bookings</div>
-
-          <div className="bg-white border border-gray-200/60 shadow-sm rounded-3xl overflow-hidden">
-            {loadingBookings ? (
-              <div className="p-6 text-gray-600">Loading bookings...</div>
-            ) : myBookings.length === 0 ? (
-              <div className="p-6 text-gray-600">No bookings found.</div>
+            {myBookings.length === 0 ? (
+              <div className="text-sm text-gray-600">No bookings found.</div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead className="bg-gray-100 text-gray-700">
+                  <thead className="bg-white text-gray-700">
                     <tr>
-                      <th className="px-4 py-3 text-left">Booking ID</th>
-                      <th className="px-4 py-3 text-left">Event</th>
-                      <th className="px-4 py-3 text-left">Tickets</th>
-                      <th className="px-4 py-3 text-left">Amount</th>
-                      <th className="px-4 py-3 text-left">Status</th>
-                      <th className="px-4 py-3 text-left">Booked At</th>
+                      <th className="px-3 py-2 text-left">ID</th>
+                      <th className="px-3 py-2 text-left">Type</th>
+                      <th className="px-3 py-2 text-left">City</th>
+                      <th className="px-3 py-2 text-left">Dates</th>
+                      <th className="px-3 py-2 text-left">Cars</th>
+                      <th className="px-3 py-2 text-left">Billing</th>
+                      <th className="px-3 py-2 text-left">Status</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {myBookings.slice(0, 10).map((b) => (
-                      <tr key={b.id || b.booking_id} className="border-t">
-                        <td className="px-4 py-3 font-semibold">#{b.id || b.booking_id}</td>
-                        <td className="px-4 py-3">{b.event_title || "-"}</td>
-                        <td className="px-4 py-3">{b.qty || "-"}</td>
-                        <td className="px-4 py-3">₹{b.total_amount || "-"}</td>
-                        <td className="px-4 py-3">{b.status || "-"}</td>
-                        <td className="px-4 py-3">{b.created_at || "-"}</td>
+                    {myBookings.slice(0, 20).map((b) => (
+                      <tr key={b.id} className="border-t bg-white">
+                        <td className="px-3 py-2 font-semibold">#{b.id}</td>
+                        <td className="px-3 py-2">{b.event_type || "-"}</td>
+                        <td className="px-3 py-2">{b.city || "-"}</td>
+                        <td className="px-3 py-2">
+                          {b.start_date ? `${b.start_date} → ${b.end_date || b.start_date}` : "-"}
+                        </td>
+                        <td className="px-3 py-2">
+                          {b.cars_qty || "-"}{" "}
+                          <span className="text-xs text-gray-400">
+                            ({b.badge || "ANY"} / min {b.min_seats || "-"})
+                          </span>
+                        </td>
+                        <td className="px-3 py-2">
+                          {b.billing_type || "-"}
+                          {String(b.billing_type || "").toUpperCase() === "PER_KM" ? (
+                            <span className="text-xs text-gray-500"> • {b.distance_km || "-"} km</span>
+                          ) : null}
+                        </td>
+                        <td className="px-3 py-2">
+                          <span
+                            className={`px-3 py-1 rounded-full text-xs font-bold ${statusPill(
+                              b.status
+                            )}`}
+                          >
+                            {b.status || "PENDING"}
+                          </span>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -502,7 +441,249 @@ export default function EventsPage() {
               </div>
             )}
           </div>
+        ) : null}
+
+        {/* Event Type */}
+        <div>
+          <label className="block text-sm font-bold text-gray-700 mb-2">Event Type</label>
+          <select
+            name="event_type"
+            value={form.event_type}
+            onChange={onChange}
+            className="w-full px-4 py-3 rounded-2xl border-2 border-gray-200 bg-gray-50 focus:bg-white outline-none"
+          >
+            <option value="WEDDING">Wedding</option>
+            <option value="CORPORATE">Corporate</option>
+            <option value="TOUR">Tour</option>
+            <option value="PARTY">Party</option>
+            <option value="OTHER">Other</option>
+          </select>
         </div>
+
+        {/* Dates */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-2">Start Date</label>
+            <input
+              type="date"
+              name="start_date"
+              value={form.start_date}
+              onChange={onChange}
+              min={todayYYYYMMDD()}
+              className="w-full px-4 py-3 rounded-2xl border-2 border-gray-200 bg-gray-50 focus:bg-white outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-2">End Date</label>
+            <input
+              type="date"
+              name="end_date"
+              value={form.end_date}
+              onChange={onChange}
+              min={form.start_date || todayYYYYMMDD()}
+              className="w-full px-4 py-3 rounded-2xl border-2 border-gray-200 bg-gray-50 focus:bg-white outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-2">Start Time</label>
+            <input
+              type="time"
+              name="start_time"
+              value={form.start_time}
+              onChange={onChange}
+              className="w-full px-4 py-3 rounded-2xl border-2 border-gray-200 bg-gray-50 focus:bg-white outline-none"
+            />
+          </div>
+        </div>
+
+        {/* City */}
+        <div>
+          <label className="block text-sm font-bold text-gray-700 mb-2">City</label>
+          <input
+            name="city"
+            value={form.city}
+            onChange={onChange}
+            placeholder="Pune / Mumbai..."
+            className="w-full px-4 py-3 rounded-2xl border-2 border-gray-200 bg-gray-50 focus:bg-white outline-none"
+          />
+        </div>
+
+        {/* Cars qty + badge + min seats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-2">
+              <Car className="inline w-4 h-4 mr-1" /> Cars Needed
+            </label>
+            <input
+              type="number"
+              min={1}
+              name="cars_qty"
+              value={form.cars_qty}
+              onChange={onChange}
+              className="w-full px-4 py-3 rounded-2xl border-2 border-gray-200 bg-gray-50 focus:bg-white outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-2">Car Type / Badge</label>
+            <select
+              name="badge"
+              value={form.badge}
+              onChange={onChange}
+              className="w-full px-4 py-3 rounded-2xl border-2 border-gray-200 bg-gray-50 focus:bg-white outline-none"
+            >
+              <option value="ANY">Any</option>
+              <option value="PLATINUM">Platinum</option>
+              <option value="GOLD">Gold</option>
+              <option value="SILVER">Silver</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-2">
+              <Users className="inline w-4 h-4 mr-1" /> Min Seats
+            </label>
+            <input
+              type="number"
+              min={2}
+              name="min_seats"
+              value={form.min_seats}
+              onChange={onChange}
+              className="w-full px-4 py-3 rounded-2xl border-2 border-gray-200 bg-gray-50 focus:bg-white outline-none"
+            />
+          </div>
+        </div>
+
+        {/* Billing */}
+        <div>
+          <label className="block text-sm font-bold text-gray-700 mb-2">Billing Type</label>
+          <select
+            name="billing_type"
+            value={form.billing_type}
+            onChange={onChange}
+            className="w-full px-4 py-3 rounded-2xl border-2 border-gray-200 bg-gray-50 focus:bg-white outline-none"
+          >
+            <option value="PER_DAY">Per Day</option>
+            <option value="PER_KM">Per KM</option>
+            <option value="PACKAGE">Package</option>
+          </select>
+        </div>
+
+        {/* Pickup + Drop */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-2">
+              <MapPin className="inline w-4 h-4 mr-1" /> Pickup Location
+            </label>
+            <PlacesInput
+              isLoaded={isLoaded}
+              value={form.pickup_location}
+              onChange={(v) => {
+                setForm((p) => ({ ...p, pickup_location: v }));
+                setCoords((p) => ({ ...p, pickup: { lat: null, lng: null } }));
+              }}
+              onSelect={({ lat, lng }) =>
+                setCoords((p) => ({
+                  ...p,
+                  pickup: { lat: lat ?? null, lng: lng ?? null },
+                }))
+              }
+              placeholder="Pickup location"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-2">
+              <MapPin className="inline w-4 h-4 mr-1" /> Drop Location{" "}
+              {form.billing_type !== "PER_KM" ? (
+                <span className="text-xs text-gray-400">(optional)</span>
+              ) : null}
+            </label>
+
+            <PlacesInput
+              isLoaded={isLoaded}
+              value={form.drop_location}
+              onChange={(v) => {
+                setForm((p) => ({ ...p, drop_location: v }));
+                setCoords((p) => ({ ...p, drop: { lat: null, lng: null } }));
+              }}
+              onSelect={({ lat, lng }) =>
+                setCoords((p) => ({
+                  ...p,
+                  drop: { lat: lat ?? null, lng: lng ?? null },
+                }))
+              }
+              placeholder={
+                form.billing_type === "PER_KM"
+                  ? "Drop location"
+                  : "Drop not required (Per Day / Package)"
+              }
+            />
+          </div>
+        </div>
+
+        {/* KM */}
+        {form.billing_type === "PER_KM" ? (
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-2">Distance (KM)</label>
+            <input
+              name="distance_km"
+              value={form.distance_km}
+              onChange={onChange}
+              placeholder="Auto-filled if pickup/drop selected"
+              className="w-full px-4 py-3 rounded-2xl border-2 border-gray-200 bg-gray-50 focus:bg-white outline-none"
+            />
+          </div>
+        ) : null}
+
+        {/* Phone */}
+        <div>
+          <label className="block text-sm font-bold text-gray-700 mb-2">
+            <Phone className="inline w-4 h-4 mr-1" /> Phone
+          </label>
+          <input
+            name="phone"
+            value={form.phone}
+            onChange={onChange}
+            placeholder="Enter phone number"
+            className="w-full px-4 py-3 rounded-2xl border-2 border-gray-200 bg-gray-50 focus:bg-white outline-none"
+          />
+        </div>
+
+        {/* Note */}
+        <div>
+          <label className="block text-sm font-bold text-gray-700 mb-2">Note (optional)</label>
+          <textarea
+            name="note"
+            value={form.note}
+            onChange={onChange}
+            placeholder="Any special requirement..."
+            className="w-full px-4 py-3 rounded-2xl border-2 border-gray-200 bg-gray-50 focus:bg-white outline-none min-h-[100px]"
+          />
+        </div>
+
+        <button
+          onClick={submit}
+          disabled={submitting}
+          className="w-full py-4 rounded-2xl bg-gradient-to-r from-cyan-600 to-teal-600 text-white font-black shadow-lg hover:shadow-2xl transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+          type="button"
+        >
+          {submitting ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin" />
+              Submitting...
+            </>
+          ) : (
+            <>
+              <CalendarDays className="w-5 h-5" />
+              Submit Event Booking Request
+            </>
+          )}
+        </button>
+
+       
       </div>
     </div>
   );
