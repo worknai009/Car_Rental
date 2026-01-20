@@ -15,6 +15,8 @@ import Contact from "./pages/Contact";
 import ReviewBooking from "./pages/ReviewBooking";
 import MyBookings from "./pages/MyBookings";
 import CarDetails from "./pages/CarDetails";
+import ResetPassword from "./pages/ResetPassword.jsx";
+import ForgotPassword from "./pages/ForgotPassword.jsx";
 
 
 // ADMIN PAGES
@@ -31,6 +33,7 @@ import ContactList from "./pages/admin/ContactList";
 import CancelRequests from "./pages/admin/CancelRequests";
 import FeedbackList from "./pages/admin/FeedbackList.jsx";
 import CarRegisterRequests from "./pages/admin/CarRegisterRequests.jsx";
+import CarRegisterUsers from "./pages/admin/CarRegisterUsers.jsx"
 
 
 
@@ -118,6 +121,9 @@ const App = () => {
         {/* ✅ PUBLIC */}
         <Route path="/about" element={<About />} />
         <Route path="/contact" element={<Contact />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+
       </Route>
 
       {/* ================= ADMIN LOGIN ================= */}
@@ -151,8 +157,8 @@ const App = () => {
         <Route path="contacts" element={<ContactList />} />
         <Route path="/admin/cancel-requests" element={<CancelRequests />} />
         <Route path="feedback" element={<FeedbackList />} />
-        <Route path="car-register-requests" element={<CarRegisterRequests />}
-/>
+        <Route path="car-register-requests" element={<CarRegisterRequests />} />
+        <Route path="car-register-users" element={<CarRegisterUsers />} />
       </Route>
 
 

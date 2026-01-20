@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation,Link } from "react-router-dom";
 
 import {
   Facebook,
@@ -295,12 +295,12 @@ const Login = () => {
                     Remember me
                   </span>
                 </label>
-                <a
-                  href="#"
+                <Link
+                  to="/forgot-password"
                   className="text-cyan-600 font-semibold hover:text-cyan-700 hover:underline"
                 >
                   Forgot Password?
-                </a>
+                </Link>
               </div>
 
               {/* Submit Button */}
@@ -460,7 +460,7 @@ const Login = () => {
         </div>
       )}
 
-      <style jsx>{`
+      <style>{`
         @keyframes fadeIn {
           from {
             opacity: 0;

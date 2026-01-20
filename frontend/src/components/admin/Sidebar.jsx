@@ -39,6 +39,10 @@ const Sidebar = () => {
           Car Register Request
         </MenuItem>
 
+        <MenuItem icon={<Car />} component={<Link to="/admin/car-register-users" />}>
+          Car Register Uses
+        </MenuItem>
+
 
         <p className="text-xs text-gray-500 px-6 py-2 uppercase">Data</p>
         <MenuItem icon={<Users />} component={<Link to="/admin/team" />}>

@@ -14,15 +14,24 @@ import {
 } from "lucide-react";
 
 const badgeClass = (badge) => {
-  const b = (badge || "").toLowerCase();
-  if (b.includes("popular")) return "bg-blue-500";
-  if (b.includes("premium")) return "bg-purple-500";
-  if (b.includes("best")) return "bg-green-500";
-  if (b.includes("family")) return "bg-orange-500";
-  if (b.includes("electric")) return "bg-emerald-500";
-  if (b.includes("adventure")) return "bg-cyan-500";
+  const b = String(badge || "").trim().toUpperCase();
+
+  if (b === "PLATINUM") return "bg-purple-600";
+  if (b === "GOLD") return "bg-yellow-500 text-black";   // readable
+  if (b === "SILVER") return "bg-gray-300 text-gray-900"; // silver + dark text
+
+  // keep your old custom badges too
+  const low = b.toLowerCase();
+  if (low.includes("popular")) return "bg-blue-500";
+  if (low.includes("premium")) return "bg-purple-500";
+  if (low.includes("best")) return "bg-green-500";
+  if (low.includes("family")) return "bg-orange-500";
+  if (low.includes("electric")) return "bg-emerald-500";
+  if (low.includes("adventure")) return "bg-cyan-500";
+
   return "bg-gray-800";
 };
+
 
 const FeaturedCars = () => {
   const navigate = useNavigate();
@@ -101,16 +110,16 @@ const FeaturedCars = () => {
       return;
     }
 
-navigate(
-  `/review-booking?car_id=${car.id}` +
-    `&pickup_location=${encodeURIComponent(t.pickup_location)}` +
-    `&drop_location=${encodeURIComponent(t.drop_location)}` +
-    `&start_date=${encodeURIComponent(t.start_date)}` +
-    `&start_time=${encodeURIComponent(t.start_time || "")}` +
-    `&end_date=${encodeURIComponent(t.end_date)}` +
-    `&booking_mode=${encodeURIComponent((t.booking_mode || "RENTAL").toUpperCase())}`, // ✅ ADD
-  { state: { car } }
-);
+    navigate(
+      `/review-booking?car_id=${car.id}` +
+      `&pickup_location=${encodeURIComponent(t.pickup_location)}` +
+      `&drop_location=${encodeURIComponent(t.drop_location)}` +
+      `&start_date=${encodeURIComponent(t.start_date)}` +
+      `&start_time=${encodeURIComponent(t.start_time || "")}` +
+      `&end_date=${encodeURIComponent(t.end_date)}` +
+      `&booking_mode=${encodeURIComponent((t.booking_mode || "RENTAL").toUpperCase())}`, // ✅ ADD
+      { state: { car } }
+    );
 
   };
 
@@ -172,22 +181,18 @@ navigate(
                     )}
 
                     {/* Badge */}
-                    <div
-                      className={`absolute top-4 left-4 ${badgeClass(
-                        badge
-                      )} text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-lg`}
-                    >
+                    <div className={`absolute top-4 left-4 ${badgeClass(badge)} text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-lg`}>
                       {badge}
                     </div>
+
 
                     {/* Favorite */}
                     <button
                       onClick={() => toggleFavorite(car.id)}
-                      className={`absolute top-4 right-4 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 backdrop-blur-md border ${
-                        isFav
+                      className={`absolute top-4 right-4 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 backdrop-blur-md border ${isFav
                           ? "bg-pink-500 border-pink-500 text-white scale-110"
                           : "bg-white/80 border-white/50 text-gray-700 hover:bg-white hover:scale-110"
-                      }`}
+                        }`}
                       type="button"
                     >
                       <Heart className={`w-5 h-5 ${isFav ? "fill-current" : ""}`} />
@@ -263,10 +268,9 @@ navigate(
                       disabled={!isAvailable}
                       onClick={() => isAvailable && handleBookNow(car)}
                       className={`w-full font-bold py-4 rounded-2xl transition-all duration-300 shadow-xl flex items-center justify-center gap-3
-                        ${
-                          isAvailable
-                            ? "bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-700 hover:to-teal-700 text-white hover:shadow-2xl transform hover:scale-105"
-                            : "bg-gray-200 text-gray-500 cursor-not-allowed opacity-70"
+                        ${isAvailable
+                          ? "bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-700 hover:to-teal-700 text-white hover:shadow-2xl transform hover:scale-105"
+                          : "bg-gray-200 text-gray-500 cursor-not-allowed opacity-70"
                         }`}
                       type="button"
                     >

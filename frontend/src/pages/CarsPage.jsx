@@ -166,7 +166,7 @@ const CarsPage = () => {
       if (selectedBadge !== "all") params.badge = selectedBadge;
       if (minPrice !== "") params.min_price = minPrice;
       if (maxPrice !== "") params.max_price = maxPrice;
-    
+
 
       const res = await userApi.get("/cars/filter", { params });
       const list = Array.isArray(res.data) ? res.data : [];
@@ -196,7 +196,7 @@ const CarsPage = () => {
   useEffect(() => {
     fetchFilteredCars();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedLocation, selectedFuel, selectedSeats,selectedBadge, minPrice, maxPrice]);
+  }, [selectedLocation, selectedFuel, selectedSeats, selectedBadge, minPrice, maxPrice]);
 
   // -------------------------
   // Scroll animations
@@ -297,13 +297,13 @@ const CarsPage = () => {
 
   };
 
-const activeFiltersCount = [
-  selectedLocation !== "all",
-  selectedFuel !== "all",
-  selectedSeats !== "all",
-  selectedBadge !== "all",
-  minPrice !== "" || maxPrice !== "",
-].filter(Boolean).length;
+  const activeFiltersCount = [
+    selectedLocation !== "all",
+    selectedFuel !== "all",
+    selectedSeats !== "all",
+    selectedBadge !== "all",
+    minPrice !== "" || maxPrice !== "",
+  ].filter(Boolean).length;
 
 
   // -------------------------
@@ -619,10 +619,21 @@ const activeFiltersCount = [
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
 
                     {car.badge ? (
-                      <div className="absolute top-4 left-4 bg-cyan-600 text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-lg">
+                      <div
+                        className={`absolute top-4 left-4 text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-lg
+      ${String(car.badge).toUpperCase() === "PLATINUM"
+                            ? "bg-purple-600"
+                            : String(car.badge).toUpperCase() === "GOLD"
+                              ? "bg-yellow-500 text-black"
+                              : String(car.badge).toUpperCase() === "SILVER"
+                                ? "bg-gray-300 text-gray-900"
+                                : "bg-cyan-600"
+                          }`}
+                      >
                         {car.badge}
                       </div>
                     ) : null}
+
 
                     <button
                       onClick={() => toggleFavorite(car.id)}
