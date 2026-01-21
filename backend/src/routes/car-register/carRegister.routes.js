@@ -12,6 +12,9 @@ router.get("/cars/my", auth, ctrl.getMyCars);
 router.get("/cars/my/all", auth, ctrl.getMyCarsAll);
 router.get("/dashboard/stats", auth, ctrl.getDashboardStats);
 router.get("/bookings/my", auth, ctrl.getMyBookings);
+router.put("/cars/:id", auth, ctrl.updateCarBothTables);
+router.delete("/cars/:id", auth, ctrl.deleteCarBothTables);
+
 
 
 module.exports = router;

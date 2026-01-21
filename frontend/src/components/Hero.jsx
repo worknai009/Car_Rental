@@ -319,7 +319,7 @@ const Hero = () => {
           </div>
         </div>
 
-        <div className="hero-reveal max-w-5xl mx-auto">
+        <div className="hero-reveal max-w-6xl mx-auto ">
           <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden">
             <div className="bg-gradient-to-r from-slate-50 to-slate-100 px-6 py-4 border-b border-slate-200">
               <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
@@ -332,7 +332,7 @@ const Hero = () => {
             </div>
 
             <form onSubmit={handleSearch} className="p-6 sm:p-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
                 <div className="reveal-y space-y-2">
                   <label className="text-sm font-bold text-slate-700">Service</label>
                   <select
