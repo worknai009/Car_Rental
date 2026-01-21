@@ -28,6 +28,8 @@ const Dashboard = () => {
     }
   };
 
+
+
   useEffect(() => {
     fetchDashboard();
   }, []);
@@ -39,7 +41,7 @@ const Dashboard = () => {
       <Header title="DASHBOARD" subtitle="Welcome to your car rental overview" />
 
       <Box display="grid" gridTemplateColumns="repeat(12, 1fr)" gap="20px" mt="20px">
-        <Box gridColumn="span 3">
+        <Box gridColumn="span 5">
           <StatBox
             title={`₹${data?.totalRevenue ?? 0}`}
             subtitle="Monthly Revenue"
@@ -47,7 +49,7 @@ const Dashboard = () => {
           />
         </Box>
 
-        <Box gridColumn="span 3">
+        <Box gridColumn="span 5">
           <StatBox
             title={data?.bookingCount ?? 0}
             subtitle="New Bookings"
@@ -69,6 +71,16 @@ const Dashboard = () => {
             subtitle="Total Users"
             icon={<Users size={26} />}
           />
+        </Box>
+
+        <Box gridColumn="span 3">
+          <StatBox
+           title={data?.carRegisterUsers ?? 0}
+
+            subtitle="Total Car Register Users"
+            icon={<Users size={26} />}
+          />
+
         </Box>
       </Box>
     </Box>

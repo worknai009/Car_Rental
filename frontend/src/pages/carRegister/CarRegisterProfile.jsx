@@ -129,14 +129,14 @@ const CarRegisterProfile = () => {
           </div>
 
           {/* Actions (UI only) */}
-          <div className="flex gap-2">
+          {/* <div className="flex gap-2">
             <button className="px-4 py-2 rounded-xl bg-black text-white text-sm font-semibold hover:opacity-90">
               Edit Profile
             </button>
             <button className="px-4 py-2 rounded-xl border border-gray-300 bg-white text-sm font-semibold hover:bg-gray-50">
               Change Password
             </button>
-          </div>
+          </div> */}
         </div>
 
         {/* Info Grid */}

@@ -18,6 +18,15 @@ exports.dashboard = async (req, res) => {
         AND YEAR(created_at) = YEAR(CURDATE())
     `);
 
+    const carRegisterUsersRows = await exe(`
+      SELECT COUNT(*) AS total 
+      FROM car_register_users
+      WHERE MONTH(created_at) = MONTH(CURDATE())
+        AND YEAR(created_at) = YEAR(CURDATE())
+    `);
+
+
+
     const usersRows = await exe(`SELECT COUNT(*) AS total FROM users`);
     const carsRows = await exe(`SELECT COUNT(*) AS total FROM cars`);
 
@@ -25,7 +34,8 @@ exports.dashboard = async (req, res) => {
       totalRevenue: revenueRows[0]?.total || 0,
       bookingCount: bookingsRows[0]?.total || 0,
       activeClients: usersRows[0]?.total || 0,
-      fleetMileage: carsRows[0]?.total || 0, // (you used this label for cars count)
+      fleetMileage: carsRows[0]?.total || 0, 
+      carRegisterUsers: carRegisterUsersRows[0]?.total || 0
     });
   } catch (err) {
     console.error("DASHBOARD ERROR:", err);
@@ -107,3 +117,8 @@ exports.pieChart = async (req, res) => {
     res.status(500).json({ message: "Pie chart error" });
   }
 };
+
+
+
+
+

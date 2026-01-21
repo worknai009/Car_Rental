@@ -15,6 +15,7 @@ exports.getAllBookings = async (req, res) => {
         b.drop_location,
         u.name AS user_name,
         u.email AS user_email,
+        u.phone AS user_phone, 
         c.name AS car_name
       FROM bookings b
       JOIN users u ON b.user_id=u.id
@@ -50,6 +51,7 @@ exports.getBookingById = async (req, res) => {
         u.id AS user_id,
         u.name AS user_name,
         u.email AS user_email,
+        u.phone AS user_phone, 
 
         c.id AS car_id,
         c.name AS car_name,
@@ -115,3 +117,25 @@ exports.updateBookingStatus = async (req, res) => {
   }
 };
 
+
+exports.deleteBooking = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) return res.status(400).json({ message: "Booking id is required" });
+
+    // ✅ first check booking exists
+    const found = await exe(`SELECT id FROM bookings WHERE id='${id}' LIMIT 1`);
+    if (!found || found.length === 0) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+
+    // ✅ delete booking
+    await exe(`DELETE FROM bookings WHERE id='${id}'`);
+
+    return res.json({ message: "Booking deleted successfully" });
+  } catch (err) {
+    console.error("DELETE BOOKING ERROR:", err);
+    return res.status(500).json({ message: "Failed to delete booking" });
+  }
+};

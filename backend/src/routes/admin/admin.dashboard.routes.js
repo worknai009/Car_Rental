@@ -7,4 +7,5 @@ router.get("/revenue", jwtUtils.authMiddleware("admin"), ctrl.revenueReport);
 router.get("/bar", jwtUtils.authMiddleware("admin"), ctrl.barChart);
 router.get("/pie", jwtUtils.authMiddleware("admin"), ctrl.pieChart);
 
+
 module.exports = router;

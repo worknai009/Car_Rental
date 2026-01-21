@@ -11,4 +11,6 @@ router.get("/:id", jwtUtils.authMiddleware("admin"), bookingCtrl.getBookingById)
 // ✅ status update (recommended PATCH)
 router.patch("/:id/status", jwtUtils.authMiddleware("admin"), bookingCtrl.updateBookingStatus);
 
+router.delete("/delete/:id", jwtUtils.authMiddleware("admin"), bookingCtrl.deleteBooking);
+
 module.exports = router;
