@@ -39,6 +39,31 @@ const FeaturedCars = () => {
   const [cars, setCars] = useState([]);
   const [loading, setLoading] = useState(true);
   const [favorites, setFavorites] = useState([]);
+  const [billingType, setBillingType] = useState("PER_DAY");
+
+
+  useEffect(() => {
+    const readBillingType = () => {
+      const saved = localStorage.getItem("tripSearch");
+      if (!saved) {
+        setBillingType("PER_DAY");
+        return;
+      }
+      try {
+        const t = JSON.parse(saved);
+        setBillingType((t.billing_type || "PER_DAY").toUpperCase());
+      } catch {
+        setBillingType("PER_DAY");
+      }
+    };
+
+    readBillingType();
+
+    window.addEventListener("tripSearchUpdated", readBillingType);
+    return () =>
+      window.removeEventListener("tripSearchUpdated", readBillingType);
+  }, []);
+
 
   useEffect(() => {
     const sr = ScrollReveal({
@@ -190,8 +215,8 @@ const FeaturedCars = () => {
                     <button
                       onClick={() => toggleFavorite(car.id)}
                       className={`absolute top-4 right-4 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 backdrop-blur-md border ${isFav
-                          ? "bg-pink-500 border-pink-500 text-white scale-110"
-                          : "bg-white/80 border-white/50 text-gray-700 hover:bg-white hover:scale-110"
+                        ? "bg-pink-500 border-pink-500 text-white scale-110"
+                        : "bg-white/80 border-white/50 text-gray-700 hover:bg-white hover:scale-110"
                         }`}
                       type="button"
                     >
@@ -250,9 +275,16 @@ const FeaturedCars = () => {
                       <div className="space-y-1">
                         <p className="text-xs text-gray-500 font-medium">Starting from</p>
                         <p className="text-2xl font-black text-gray-900">
-                          ₹{Number(car.price_per_day || 0).toLocaleString()}
-                          <span className="text-sm font-normal text-gray-500">/day</span>
+                          ₹{Number(
+                            billingType === "PER_KM"
+                              ? car.price_per_km || 0
+                              : car.price_per_day || 0
+                          ).toLocaleString()}
+                          <span className="text-sm font-normal text-gray-500">
+                            {billingType === "PER_KM" ? "/km" : "/day"}
+                          </span>
                         </p>
+
                       </div>
 
                       <div className="flex items-center gap-1.5 bg-yellow-50 px-3 py-2 rounded-lg">

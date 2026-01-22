@@ -329,6 +329,10 @@ const CarDetails = () => {
                     <IndianRupee className="w-6 h-6" />
                     {Number(car.price_per_day || 0).toLocaleString()}
                   </p>
+                  {/* <p className="text-3xl font-black text-gray-900 flex items-center gap-1">
+                    <IndianRupee className="w-6 h-6" />
+                    {Number(car.price_per_km || 0).toLocaleString()}
+                  </p> */}
                 </div>
 
                 <div

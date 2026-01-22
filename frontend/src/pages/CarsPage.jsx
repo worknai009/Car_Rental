@@ -61,6 +61,9 @@ const CarsPage = () => {
   // TRIP STATE
   // -------------------------
   const [trip, setTrip] = useState(null);
+  const billingType = trip?.billing_type || "PER_DAY";
+  const isPerKm = billingType === "PER_KM";
+
 
   const getTripData = () => {
     if (trip) return trip;
@@ -587,11 +590,10 @@ const CarsPage = () => {
                 <button
                   onClick={clearFilters}
                   disabled={activeFiltersCount === 0 && !searchQuery}
-                  className={`w-full px-4 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 ${
-                    activeFiltersCount > 0 || searchQuery
-                      ? "bg-cyan-100 text-cyan-600 hover:bg-cyan-200"
-                      : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                  }`}
+                  className={`w-full px-4 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 ${activeFiltersCount > 0 || searchQuery
+                    ? "bg-cyan-100 text-cyan-600 hover:bg-cyan-200"
+                    : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                    }`}
                 >
                   <X className="w-5 h-5" />
                   <span>Clear</span>
@@ -667,14 +669,13 @@ const CarsPage = () => {
                     {car.badge ? (
                       <div
                         className={`absolute top-4 left-4 text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-lg
-                          ${
-                            String(car.badge).toUpperCase() === "PLATINUM"
-                              ? "bg-purple-600"
-                              : String(car.badge).toUpperCase() === "GOLD"
+                          ${String(car.badge).toUpperCase() === "PLATINUM"
+                            ? "bg-purple-600"
+                            : String(car.badge).toUpperCase() === "GOLD"
                               ? "bg-yellow-500 text-black"
                               : String(car.badge).toUpperCase() === "SILVER"
-                              ? "bg-gray-300 text-gray-900"
-                              : "bg-cyan-600"
+                                ? "bg-gray-300 text-gray-900"
+                                : "bg-cyan-600"
                           }`}
                       >
                         {car.badge}
@@ -683,11 +684,10 @@ const CarsPage = () => {
 
                     <button
                       onClick={() => toggleFavorite(car.id)}
-                      className={`absolute top-4 right-4 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 backdrop-blur-md border ${
-                        isFavorite
-                          ? "bg-pink-500 border-pink-500 text-white scale-110"
-                          : "bg-white/80 border-white/50 text-gray-700 hover:bg-white hover:scale-110"
-                      }`}
+                      className={`absolute top-4 right-4 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 backdrop-blur-md border ${isFavorite
+                        ? "bg-pink-500 border-pink-500 text-white scale-110"
+                        : "bg-white/80 border-white/50 text-gray-700 hover:bg-white hover:scale-110"
+                        }`}
                     >
                       <Heart className={`w-5 h-5 ${isFavorite ? "fill-current" : ""}`} />
                     </button>
@@ -741,9 +741,12 @@ const CarsPage = () => {
                       <div className="space-y-1">
                         <p className="text-xs text-gray-500 font-medium">Starting from</p>
                         <p className="text-2xl font-black text-gray-900">
-                          ₹{Number(car.price_per_day || 0).toLocaleString()}
-                          <span className="text-sm font-normal text-gray-500">/day</span>
+                          ₹{Number(isPerKm ? car.price_per_km : car.price_per_day || 0).toLocaleString()}
+                          <span className="text-sm font-normal text-gray-500">
+                            {isPerKm ? "/km" : "/day"}
+                          </span>
                         </p>
+
                       </div>
 
                       <div className="flex items-center gap-1.5 bg-yellow-50 px-3 py-2 rounded-lg">
@@ -756,10 +759,9 @@ const CarsPage = () => {
                       disabled={!isAvailable}
                       onClick={() => isAvailable && handleBookNow(car)}
                       className={`w-full font-bold py-4 rounded-2xl transition-all duration-300 shadow-xl flex items-center justify-center gap-3
-                        ${
-                          isAvailable
-                            ? "bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-700 hover:to-teal-700 text-white hover:shadow-2xl transform hover:scale-105"
-                            : "bg-gray-200 text-gray-500 cursor-not-allowed opacity-70"
+                        ${isAvailable
+                          ? "bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-700 hover:to-teal-700 text-white hover:shadow-2xl transform hover:scale-105"
+                          : "bg-gray-200 text-gray-500 cursor-not-allowed opacity-70"
                         }`}
                     >
                       {isAvailable ? "Book Now" : "Not Available"}

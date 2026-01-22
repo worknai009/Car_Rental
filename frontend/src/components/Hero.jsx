@@ -253,20 +253,23 @@ const Hero = () => {
     try {
       setSearching(true);
       localStorage.setItem("tripSearch", JSON.stringify(trip));
+      window.dispatchEvent(new Event("tripSearchUpdated"));
+
+
 
       // ✅ Send everything in URL (coords + billing type)
       navigate(
         `/cars?pickup_location=${encodeURIComponent(trip.pickup_location)}` +
-          `&drop_location=${encodeURIComponent(trip.drop_location)}` +
-          `&start_date=${encodeURIComponent(trip.start_date)}` +
-          `&start_time=${encodeURIComponent(trip.start_time)}` +
-          `&end_date=${encodeURIComponent(trip.end_date)}` +
-          `&booking_mode=${encodeURIComponent(trip.booking_mode)}` +
-          `&billing_type=${encodeURIComponent(trip.billing_type)}` +
-          `&pickup_lat=${encodeURIComponent(trip.pickup_lat ?? "")}` +
-          `&pickup_lng=${encodeURIComponent(trip.pickup_lng ?? "")}` +
-          `&drop_lat=${encodeURIComponent(trip.drop_lat ?? "")}` +
-          `&drop_lng=${encodeURIComponent(trip.drop_lng ?? "")}`
+        `&drop_location=${encodeURIComponent(trip.drop_location)}` +
+        `&start_date=${encodeURIComponent(trip.start_date)}` +
+        `&start_time=${encodeURIComponent(trip.start_time)}` +
+        `&end_date=${encodeURIComponent(trip.end_date)}` +
+        `&booking_mode=${encodeURIComponent(trip.booking_mode)}` +
+        `&billing_type=${encodeURIComponent(trip.billing_type)}` +
+        `&pickup_lat=${encodeURIComponent(trip.pickup_lat ?? "")}` +
+        `&pickup_lng=${encodeURIComponent(trip.pickup_lng ?? "")}` +
+        `&drop_lat=${encodeURIComponent(trip.drop_lat ?? "")}` +
+        `&drop_lng=${encodeURIComponent(trip.drop_lng ?? "")}`
       );
     } finally {
       setSearching(false);

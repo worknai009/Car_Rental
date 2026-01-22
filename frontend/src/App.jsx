@@ -94,38 +94,15 @@ const App = () => {
         {/* ✅ PUBLIC */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-
-        {/* ✅ PROTECTED (as you want) */}
         <Route path="/cars" element={<Car />} />
         <Route path="/events" element={<EventsPage />} />
         <Route path="/cars/:id" element={<CarDetails />} />
-
-
-
-        <Route
-          path="/review-booking"
-          element={
-            <UserPrivateRoute>
-              <ReviewBooking />
-            </UserPrivateRoute>
-          }
-        />
-
-        <Route
-          path="/my-bookings"
-          element={
-            <UserPrivateRoute>
-              <MyBookings />
-            </UserPrivateRoute>
-          }
-        />
-
-        {/* ✅ PUBLIC */}
+        <Route path="/review-booking"  element={  <UserPrivateRoute>  <ReviewBooking />  </UserPrivateRoute>  }  />
+        <Route path="/my-bookings"  element={  <UserPrivateRoute>  <MyBookings />  </UserPrivateRoute>  } />
         <Route path="/about" element={<About />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
-
       </Route>
 
       {/* ================= ADMIN LOGIN ================= */}
@@ -133,14 +110,7 @@ const App = () => {
       <Route path="/admin/register" element={<AdminRegister />} />
 
       {/* ================= ADMIN ROUTES ================= */}
-      <Route
-        path="/admin"
-        element={
-          <AdminPrivateRoute>
-            <AdminLayout />
-          </AdminPrivateRoute>
-        }
-      >
+      <Route  path="/admin"  element={  <AdminPrivateRoute>  <AdminLayout />  </AdminPrivateRoute> } >
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="team" element={<Team />} />
