@@ -12,8 +12,8 @@ const app = express();
 
 app.use(
   cors({
-    origin: ["http://localhost:5173", "http://localhost:5174"],
-     credentials: true,
+    origin: process.env.CLIENT_URL ? process.env.CLIENT_URL.split(",") : ["http://localhost:5173", "http://localhost:5174"],
+    credentials: true,
     exposedHeaders: ["Content-Disposition", "Content-Type"],
   })
 );

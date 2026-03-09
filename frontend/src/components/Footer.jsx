@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import ScrollReveal from "scrollreveal";
+import userApi from "../utils/userApi"; // adjust path
 import {
   MapPin,
   Phone,
@@ -21,32 +22,55 @@ const Footer = () => {
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
 
-  useEffect(() => {
-    const sr = ScrollReveal({
-      reset: false,
-      distance: "50px",
-      duration: 1200,
-      easing: "ease-in-out",
-    });
+  const [testimonials, setTestimonials] = useState([]);
+  const [tLoading, setTLoading] = useState(true);
 
-    sr.reveal(".footer-cta", { origin: "top", distance: "30px" });
-    sr.reveal(".footer-col-1", { origin: "left", delay: 100 });
-    sr.reveal(".footer-col-2", { origin: "bottom", delay: 200 });
-    sr.reveal(".footer-col-3", { origin: "bottom", delay: 300 });
-    sr.reveal(".footer-col-4", { origin: "right", delay: 400 });
-    sr.reveal(".footer-bottom", { origin: "bottom", delay: 500 });
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setTLoading(true);
+        const res = await userApi.get("/feedback/latest", { params: { limit: 6 } });
+        setTestimonials(Array.isArray(res.data) ? res.data : []);
+      } catch (e) {
+        console.error(e);
+        setTestimonials([]);
+      } finally {
+        setTLoading(false);
+      }
+    };
+    load();
   }, []);
 
-  const handleSubscribe = (e) => {
-    e.preventDefault();
-    if (email) {
-      setSubscribed(true);
-      setTimeout(() => {
-        setSubscribed(false);
-        setEmail("");
-      }, 3000);
+  useEffect(() => {
+    let sr;
+    try {
+      sr = ScrollReveal({
+        reset: false,
+        distance: "50px",
+        duration: 1200,
+        easing: "ease-in-out",
+      });
+
+      // ✅ Do NOT animate footer-cta (testimonials). Keep it fixed.
+      // sr.reveal(".footer-cta", { origin: "top", distance: "30px" });
+
+      sr.reveal(".footer-col-1", { origin: "left", delay: 100 });
+      sr.reveal(".footer-col-2", { origin: "bottom", delay: 200 });
+      sr.reveal(".footer-col-3", { origin: "bottom", delay: 300 });
+      sr.reveal(".footer-col-4", { origin: "right", delay: 400 });
+      sr.reveal(".footer-bottom", { origin: "bottom", delay: 500 });
+    } catch (e) {
+      console.error("ScrollReveal error:", e);
     }
-  };
+
+    return () => {
+      try {
+        sr?.destroy();
+      } catch { }
+    };
+  }, []);
+
+
 
   const quickLinks = [
     { name: "Home", path: "/" },
@@ -76,6 +100,23 @@ const Footer = () => {
     { icon: Linkedin, name: "LinkedIn", url: "#", color: "hover:bg-blue-700" },
   ];
 
+  const Stars = ({ value = 0 }) => {
+    const v = Math.max(0, Math.min(5, Number(value) || 0));
+    return (
+      <div className="flex items-center gap-1">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <span
+            key={i}
+            className={`text-sm ${i < v ? "text-yellow-400" : "text-white/30"}`}
+          >
+            ★
+          </span>
+        ))}
+      </div>
+    );
+  };
+
+
   return (
     <footer className="relative bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 text-gray-200 mt-20 overflow-hidden">
       {/* Background Decorative Elements */}
@@ -83,54 +124,69 @@ const Footer = () => {
       <div className="absolute bottom-0 right-0 w-96 h-96 bg-teal-500/5 rounded-full blur-3xl"></div>
 
       {/* Newsletter CTA Section */}
-      <div className="footer-cta relative border-b border-gray-700">
+      <div className="footer-cta relative border-b border-gray-700 overflow-hidden">
+
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="bg-gradient-to-r from-cyan-600 via-teal-600 to-cyan-700 rounded-3xl p-8 md:p-12 shadow-2xl">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-8">
-              {/* Left Content */}
-              <div className="flex-1 text-center md:text-left">
+            <div className="flex flex-col gap-6">
+              <div className="text-center md:text-left">
                 <h3 className="text-3xl md:text-4xl font-black text-white mb-3">
-                  Get Exclusive Offers!
+                  Testimonials
                 </h3>
                 <p className="text-white/90 text-lg">
-                  Subscribe to our newsletter and get 10% off your first booking
+                  Real feedback from customers who booked cars with us
                 </p>
               </div>
 
-              {/* Newsletter Form */}
-              <form onSubmit={handleSubscribe} className="w-full md:w-auto">
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <div className="relative">
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="Enter your email"
-                      className="w-full sm:w-80 pl-12 pr-4 py-4 rounded-xl bg-white text-gray-900 placeholder-gray-500 font-medium focus:outline-none focus:ring-4 focus:ring-white/30 transition-all"
-                      required
-                    />
+              <div className="min-h-[220px]">
+                {tLoading ? (
+                  <div className="text-white/90">Loading feedback...</div>
+                ) : testimonials.length === 0 ? (
+                  <div className="text-white/90">No feedback available yet.</div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-stretch">
+                    {testimonials.slice(0, 6).map((f) => (
+                      <div
+                        key={f.id}
+                        className="bg-white/10 backdrop-blur border border-white/20 rounded-2xl p-5 shadow-lg h-full flex flex-col"
+                      >
+                        <Stars value={f.rating} />
+
+                        {/* ✅ clamp WITHOUT needing tailwind line-clamp plugin */}
+                        <div
+                          className="mt-3 text-white font-semibold break-words overflow-hidden"
+                          style={{
+                            display: "-webkit-box",
+                            WebkitLineClamp: 4,
+                            WebkitBoxOrient: "vertical",
+                          }}
+                        >
+                          “{f.message || "—"}”
+                        </div>
+
+                        <div className="mt-auto pt-4 border-t border-white/15">
+                          <div className="text-white font-bold">{f.username || "User"}</div>
+
+                          <div className="text-white/80 text-sm">
+                            Booking Car:{" "}
+                            <span className="font-semibold">
+                              {(f.car_name || "-") + (f.car_brand ? ` • ${f.car_brand}` : "")}
+                            </span>
+                          </div>
+
+                          <div className="text-white/70 text-xs mt-1">
+                            {f.created_at ? new Date(f.created_at).toLocaleDateString() : ""}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <button
-                    type="submit"
-                    className="group bg-gray-900 hover:bg-black text-white px-8 py-4 rounded-xl font-bold transition-all duration-300 transform hover:scale-105 flex items-center justify-center gap-2 shadow-lg"
-                  >
-                    {subscribed ? (
-                      <>
-                        <span>Subscribed!</span>
-                        <Award className="w-5 h-5" />
-                      </>
-                    ) : (
-                      <>
-                        <span>Subscribe</span>
-                        <Send className="w-5 h-5 transform group-hover:translate-x-1 transition-transform" />
-                      </>
-                    )}
-                  </button>
-                </div>
-              </form>
+                )}
+              </div>
+
             </div>
           </div>
+
         </div>
       </div>
 

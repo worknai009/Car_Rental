@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import carRegisterApi from "../../utils/carRegisterApi";
 
-const API_BASE = "http://localhost:1000";
+const API_BASE = import.meta.env.VITE_API_URL;
 
 // If DB stores only filename, keep this.
 // If DB stores "/uploads/cars/filename", it will still work.
@@ -234,7 +234,7 @@ const CarRegisterCars = () => {
                   <div className="mt-2 text-sm font-semibold text-gray-900">
                     ₹{c.price_per_day || "-"} / day
                   </div>
-                   <div className="mt-2 text-sm font-semibold text-gray-900">
+                  <div className="mt-2 text-sm font-semibold text-gray-900">
                     ₹{c.price_per_km || "-"} / Km
                   </div>
 

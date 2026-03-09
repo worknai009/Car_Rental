@@ -10,7 +10,7 @@ exports.getAllCars = async (req, res) => {
       FROM cars c
       LEFT JOIN categories cat ON c.category_id = cat.id
       WHERE IFNULL(c.is_active, 1) = 1
-      ORDER BY c.id DESC
+     ORDER BY IFNULL(c.is_available, 1) DESC, c.id DESC
     `);
 
     res.json(data);
@@ -19,6 +19,9 @@ exports.getAllCars = async (req, res) => {
     res.status(500).json({ message: "Failed to fetch cars" });
   }
 };
+
+
+
 
 /* ================= AVAILABLE + ACTIVE CARS ================= */
 exports.availableCars = async (req, res) => {
@@ -115,7 +118,8 @@ if (badge && badge !== "all") {
 
 
 
-    query += " ORDER BY c.id DESC";
+    query += " ORDER BY IFNULL(c.is_available, 1) DESC, c.id DESC";
+
 
     const data = await exe(query, params);
     res.json(data);
@@ -186,5 +190,64 @@ exports.getCarReviews = async (req, res) => {
   } catch (err) {
     console.error("CAR REVIEWS ERROR:", err);
     res.status(500).json({ message: "Failed to fetch car reviews" });
+  }
+};
+
+
+exports.suggestCars = async (req, res) => {
+  try {
+    const exclude_car_id = Number(req.query.exclude_car_id || 0);
+    const city = String(req.query.city || "").trim();
+    const category_id = Number(req.query.category_id || 0);
+
+    const start_date = String(req.query.start_date || "").trim();
+    const end_date = String(req.query.end_date || "").trim();
+    const limit = Math.min(12, Math.max(1, Number(req.query.limit || 6)));
+
+    if (!start_date || !end_date) {
+      return res.status(400).json({ message: "start_date and end_date are required" });
+    }
+
+    let sql = `
+      SELECT 
+        c.*,
+        COALESCE(cat.name, '-') AS category_name
+      FROM cars c
+      LEFT JOIN categories cat ON c.category_id = cat.id
+      WHERE IFNULL(c.is_active, 1) = 1
+        AND IFNULL(c.is_available, 1) = 1
+        ${exclude_car_id ? "AND c.id <> ?" : ""}
+        ${city ? "AND c.city LIKE ?" : ""}
+        ${category_id ? "AND c.category_id = ?" : ""}
+
+        -- ✅ Not booked in selected dates
+        AND NOT EXISTS (
+          SELECT 1
+          FROM bookings b
+          WHERE b.car_id = c.id
+            AND COALESCE(b.status,'BOOKED') NOT IN ('CANCELLED')
+            AND (
+              DATE(?) <= DATE(COALESCE(b.end_date, b.start_date))
+              AND DATE(?) >= DATE(b.start_date)
+            )
+        )
+      ORDER BY c.rating DESC, c.id DESC
+      LIMIT ?
+    `;
+
+    const params = [];
+    if (exclude_car_id) params.push(exclude_car_id);
+    if (city) params.push(`%${city}%`);
+    if (category_id) params.push(category_id);
+
+    // overlap check params
+    params.push(start_date, end_date);
+    params.push(limit);
+
+    const rows = await exe(sql, params);
+    res.json(Array.isArray(rows) ? rows : []);
+  } catch (err) {
+    console.error("SUGGEST CARS ERROR:", err);
+    res.status(500).json({ message: "Failed to fetch suggestions" });
   }
 };

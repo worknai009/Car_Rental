@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const carRegisterApi = axios.create({
-  baseURL: "http://localhost:1000/car-register",
+  baseURL: `${import.meta.env.VITE_API_URL}/car-register`,
 });
 
 carRegisterApi.interceptors.request.use((config) => {

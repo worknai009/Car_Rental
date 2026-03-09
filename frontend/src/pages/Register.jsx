@@ -92,7 +92,7 @@ const Register = () => {
       setLoading(true);
 
       const res = await axios.post(
-        "http://localhost:1000/auth/register",
+        `${import.meta.env.VITE_API_URL}/auth/register`,
         {
           name: formData.name,
           email: formData.email,

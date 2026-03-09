@@ -101,7 +101,7 @@ const CarList = () => {
                   <td className="p-3">
                     {c.cars_image ? (
                       <img
-                        src={`http://localhost:1000/public/${c.cars_image}`}
+                        src={`${import.meta.env.VITE_API_URL}/public/${c.cars_image}`}
                         alt="car"
                         className="w-16 h-12 object-cover rounded"
                       />
@@ -118,11 +118,10 @@ const CarList = () => {
                   <td className="p-3">
                     <button
                       onClick={() => toggleAvailability(c)}
-                      className={`px-3 py-1 rounded text-white ${
-                        isAvailable
+                      className={`px-3 py-1 rounded text-white ${isAvailable
                           ? "bg-green-600 hover:bg-green-700"
                           : "bg-gray-600 hover:bg-gray-700"
-                      }`}
+                        }`}
                     >
                       {isAvailable ? "Yes" : "No"}
                     </button>

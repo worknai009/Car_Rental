@@ -119,6 +119,8 @@ async function createBooking({
     total_amount = Number((baseRate * billedKm).toFixed(2));
   }
 
+
+
   // ✅ INSERT using your table columns
   const result = await exe(
     `INSERT INTO bookings
@@ -145,6 +147,7 @@ async function createBooking({
       start_time,
     ]
   );
+  
 
   const booking_id = result?.insertId || result?.[0]?.insertId || null;
 

@@ -335,7 +335,7 @@ const Hero = () => {
             </div>
 
             <form onSubmit={handleSearch} className="p-6 sm:p-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-5">
                 <div className="reveal-y space-y-2">
                   <label className="text-sm font-bold text-slate-700">Service</label>
                   <select

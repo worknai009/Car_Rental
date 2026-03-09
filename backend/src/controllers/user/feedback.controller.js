@@ -14,6 +14,17 @@ exports.getCarReviews = async (req, res) => {
   }
 };
 
+exports.getLatestFeedback = async (req, res) => {
+  try {
+    const limit = Number(req.query.limit || 6);
+    const rows = await feedbackService.getLatestFeedback(limit);
+    res.json(Array.isArray(rows) ? rows : []);
+  } catch (err) {
+    res.status(500).json({ message: "Failed to fetch latest feedback" });
+  }
+};
+
+
 exports.createFeedback = async (req, res) => {
   try {
     const user_id = getUserId(req);

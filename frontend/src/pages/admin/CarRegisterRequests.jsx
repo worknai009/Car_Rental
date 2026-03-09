@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import adminApi from "../../utils/adminApi";
 
-const API_BASE = "http://localhost:1000";
+const API_BASE = import.meta.env.VITE_API_URL;
 
 const makeFileUrl = (p) => {
   if (!p) return "";
@@ -204,6 +204,7 @@ const CarRegisterRequests = () => {
             <table className="w-full text-sm">
               <thead className="bg-gray-100 text-gray-700">
                 <tr>
+                  <th className="px-4 py-3 text-left">Car Register User</th>
                   <th className="px-4 py-3 text-left">Car</th>
                   <th className="px-4 py-3 text-left">Brand</th>
                   <th className="px-4 py-3 text-left">City</th>
@@ -226,7 +227,8 @@ const CarRegisterRequests = () => {
                   return (
                     <React.Fragment key={c.id}>
                       <tr className="border-t align-top">
-                        <td className="px-4 py-3 font-semibold">{c.name}</td>
+                        <td className="px-4 py-3">{c.car_register_user}</td>
+                        <td className="px-4 py-3 font-semibold">{c.car_name}</td>
                         <td className="px-4 py-3">{c.brand}</td>
                         <td className="px-4 py-3">{c.city}</td>
                         <td className="px-4 py-3">{c.fuel_type}</td>
@@ -235,13 +237,12 @@ const CarRegisterRequests = () => {
 
                         <td className="px-4 py-3">
                           <span
-                            className={`px-3 py-1 rounded-full text-xs font-bold ${
-                              c.status === "PENDING"
-                                ? "bg-yellow-100 text-yellow-700"
-                                : c.status === "APPROVED"
+                            className={`px-3 py-1 rounded-full text-xs font-bold ${c.status === "PENDING"
+                              ? "bg-yellow-100 text-yellow-700"
+                              : c.status === "APPROVED"
                                 ? "bg-green-100 text-green-700"
                                 : "bg-red-100 text-red-700"
-                            }`}
+                              }`}
                           >
                             {c.status}
                           </span>

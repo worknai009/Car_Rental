@@ -75,6 +75,9 @@ export default function EventRequests() {
                 <th className="p-3 text-left">ID</th>
                 <th className="p-3 text-left">User</th>
                 <th className="p-3 text-left">City</th>
+                <th className="p-3 text-left">PickUp Location</th>
+                <th className="p-3 text-left">Drop Location </th>
+
                 <th className="p-3 text-left">Dates</th>
                 <th className="p-3 text-left">Cars</th>
                 <th className="p-3 text-left">Billing</th>
@@ -91,6 +94,10 @@ export default function EventRequests() {
                     <div className="text-xs text-gray-500">{r.user_email || "-"}</div>
                   </td>
                   <td className="p-3">{r.city}</td>
+                  <td className="p-3">{r.pickup_location}</td>
+
+                  <td className="p-3">{r.drop_location}</td>
+
                   <td className="p-3">
                     {String(r.start_date).slice(0, 10)} → {String(r.end_date).slice(0, 10)}
                     <div className="text-xs text-gray-500">time: {r.start_time || "-"}</div>

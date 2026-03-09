@@ -94,7 +94,7 @@ exports.rejectCancelRequest = async (req, res) => {
     );
 
     // ✅ booking back to CONFIRMED (because cancel rejected)
-    await exe("UPDATE bookings SET status='CONFIRMED' WHERE id=?", [reqRow.booking_id]);
+    await exe("UPDATE bookings SET status='BOOKED' WHERE id=?", [reqRow.booking_id]);
 
     res.json({ message: "Request rejected ✅" });
   } catch (err) {

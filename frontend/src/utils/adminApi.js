@@ -15,7 +15,7 @@
 import axios from "axios";
 
 const adminApi = axios.create({
-  baseURL: "http://localhost:1000",
+  baseURL: import.meta.env.VITE_API_URL,
 });
 
 // ✅ Attach token

@@ -1,7 +1,9 @@
 import axios from "axios";
 
 const userApi = axios.create({
-  baseURL: "http://localhost:1000", // ✅ because app.use("/", user_routes)
+  // baseURL: import.meta.env.VITE_API_URL, // ✅ because app.use("/", user_routes)
+
+  baseURL: import.meta.env.VITE_API_URL,
 });
 
 // ✅ attach user token automatically

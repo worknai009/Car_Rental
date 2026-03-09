@@ -20,22 +20,48 @@ exports.listCarRequests = async (req, res) => {
     const { status } = req.query;
 
     let sql = `
-      SELECT 
-        id, car_user_id, name, brand, category_id, car_details, city, year, seats, fuel_type,
-        cars_image, requested_category_id, approved_category_id, price_per_day,
-        rc_book, insurance_copy, puc_certificate, id_proof,
-        status, admin_remark, created_at, updated_at
-      FROM car_registration_requests
+      SELECT
+        crr.id,
+        crr.car_user_id,
+
+        cru.name AS car_register_user,
+        crr.name AS car_name,
+        crr.brand,
+        crr.city,
+        crr.fuel_type,
+        crr.seats,
+        crr.price_per_day,
+        crr.status,
+
+        crr.cars_image AS cars_image,
+
+        crr.rc_book,
+        crr.insurance_copy,
+        crr.puc_certificate,
+        crr.id_proof,
+
+        crr.car_details,
+        crr.category_id,
+        crr.requested_category_id,
+        crr.approved_category_id,
+        crr.price_per_km,
+        crr.year,
+        crr.admin_remark,
+        crr.created_at,
+        crr.updated_at
+
+      FROM car_registration_requests crr
+      LEFT JOIN car_register_users cru ON cru.id = crr.car_user_id
     `;
 
     const params = [];
 
     if (status && ALLOWED_STATUS.includes(status)) {
-      sql += ` WHERE status = ?`;
+      sql += ` WHERE crr.status = ?`;
       params.push(status);
     }
 
-    sql += ` ORDER BY created_at DESC`;
+    sql += ` ORDER BY crr.created_at DESC`;
 
     const rows = await db.exe(sql, params);
     return res.json(Array.isArray(rows) ? rows : []);
@@ -44,6 +70,7 @@ exports.listCarRequests = async (req, res) => {
     return res.status(500).json({ message: "Failed to load car requests" });
   }
 };
+
 
 // GET /admin/car-requests/:id
 exports.getCarRequestById = async (req, res) => {
@@ -249,18 +276,19 @@ exports.rejectCarRequest = async (req, res) => {
       return res.status(400).json({ message: "Reject reason is required" });
     }
 
-    // ✅ FIX: correct table name
     const rows = await db.exe(
-      `SELECT id, status FROM car_registration_requests WHERE id = ? LIMIT 1`,
+      `SELECT id, status FROM car_registration_requests WHERE id=? LIMIT 1`,
       [id]
     );
 
-    if (!rows || rows.length === 0) {
+    if (!rows.length) {
       return res.status(404).json({ message: "Request not found" });
     }
 
     if (rows[0].status !== "PENDING") {
-      return res.status(400).json({ message: "Only PENDING requests can be rejected" });
+      return res
+        .status(400)
+        .json({ message: "Only PENDING requests can be rejected" });
     }
 
     await db.exe(
@@ -272,9 +300,10 @@ exports.rejectCarRequest = async (req, res) => {
       [reason, id]
     );
 
-    return res.json({ message: "Car rejected successfully" });
+    return res.json({ message: "Car request rejected successfully ✅" });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: "Reject failed" });
   }
 };
+

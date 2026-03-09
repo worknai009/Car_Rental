@@ -54,6 +54,10 @@ const ReviewBookingPage = () => {
   const [car, setCar] = useState(carFromState);
   const [loadingCar, setLoadingCar] = useState(!carFromState);
   const [saving, setSaving] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+  const [suggestions, setSuggestions] = useState([]);
+  const [sLoading, setSLoading] = useState(false);
+
 
   const [coords, setCoords] = useState({
     pickup: { lat: pickupLatUrl, lng: pickupLngUrl },
@@ -69,6 +73,18 @@ const ReviewBookingPage = () => {
     start_date: startDateFromUrl,
     end_date: bookingModeFromUrl === "TRANSFER" ? startDateFromUrl : endDateFromUrl,
   });
+
+
+  const goBack = () => {
+    // go to previous page if possible
+    if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate("/cars");
+    }
+  };
+
+
 
   // Sync when URL changes
   useEffect(() => {
@@ -112,7 +128,7 @@ const ReviewBookingPage = () => {
       if (!form.billing_type && t.billing_type) {
         setForm((x) => ({ ...x, billing_type: String(t.billing_type).toUpperCase() }));
       }
-    } catch {}
+    } catch { }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -234,11 +250,22 @@ const ReviewBookingPage = () => {
       navigate("/my-bookings");
     } catch (err) {
       console.error("Create booking error:", err);
-      alert(err?.response?.data?.message || "Booking failed");
+
+      const msg = err?.response?.data?.message || "Booking failed";
+      setErrorMsg(msg);
+
+      if (String(msg).toLowerCase().includes("already booked")) {
+        fetchSuggestions();
+      } else {
+        setSuggestions([]);
+      }
     } finally {
+
       setSaving(false);
     }
   };
+
+
 
   if (loadingCar) {
     return (
@@ -268,7 +295,32 @@ const ReviewBookingPage = () => {
     );
   }
 
-  const imageUrl = car?.cars_image ? `http://localhost:1000/public/${car.cars_image}` : "";
+  const fetchSuggestions = async () => {
+    if (!car) return;
+    try {
+      setSLoading(true);
+
+      const res = await userApi.get("/cars/suggest", {
+        params: {
+          exclude_car_id: Number(carId),
+          city: car.city || "",
+          category_id: car.category_id || 0,
+          start_date: form.start_date,
+          end_date: form.booking_mode === "TRANSFER" ? form.start_date : form.end_date,
+          limit: 6,
+        },
+      });
+
+      setSuggestions(Array.isArray(res.data) ? res.data : []);
+    } catch (e) {
+      console.error("suggestions error:", e);
+      setSuggestions([]);
+    } finally {
+      setSLoading(false);
+    }
+  };
+
+  const imageUrl = car?.cars_image ? `${import.meta.env.VITE_API_URL}/public/${car.cars_image}` : "";
 
   const rateLabel =
     form.booking_mode === "TRANSFER" ? "Rate (uses price_per_km)" : "Rate (uses price_per_day)";
@@ -276,6 +328,8 @@ const ReviewBookingPage = () => {
   return (
     <div className="min-h-screen bg-gray-50 pt-24 pb-10 px-4">
       <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+
         {/* LEFT */}
         <div className="bg-white rounded-3xl shadow border overflow-hidden">
           <div className="h-60 bg-gray-100">
@@ -414,11 +468,21 @@ const ReviewBookingPage = () => {
             ) : null}
           </div>
 
+          {/* ✅ Back button (add here) */}
+          <button
+            type="button"
+            onClick={goBack}
+            className="w-full py-3 rounded-2xl border border-gray-200 bg-white text-gray-800 font-black hover:bg-gray-50 transition-all flex items-center justify-center gap-2"
+          >
+            ← Back
+          </button>
+
           <button
             onClick={handleConfirmBooking}
             disabled={saving || (form.billing_type === "PER_KM" && !oneWayKm)}
             className="w-full py-4 rounded-2xl bg-gradient-to-r from-cyan-600 to-teal-600 text-white font-black shadow-lg hover:shadow-2xl transition-all flex items-center justify-center gap-2 disabled:opacity-60"
           >
+
             {saving ? (
               <>
                 <Loader2 className="w-5 h-5 animate-spin" />
@@ -430,6 +494,57 @@ const ReviewBookingPage = () => {
               </>
             )}
           </button>
+          {errorMsg ? (
+            <div className="mt-3 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 font-semibold text-sm">
+              {errorMsg}
+            </div>
+          ) : null}
+
+          {sLoading ? (
+            <div className="mt-4 text-sm text-gray-600">Loading alternative cars...</div>
+          ) : suggestions.length > 0 ? (
+            <div className="mt-5">
+              <div className="text-sm font-black text-gray-900 mb-2">
+                Suggested Available Cars
+              </div>
+
+              <div className="grid gap-3">
+                {suggestions.map((x) => {
+                  const img = x.cars_image
+                    ? `http://localhost:1000/public/${x.cars_image}`
+                    : "";
+                  return (
+                    <div key={x.id} className="flex gap-3 p-3 rounded-2xl border bg-gray-50">
+                      <div className="w-20 h-16 rounded-xl bg-gray-200 overflow-hidden shrink-0">
+                        {img ? <img src={img} alt={x.name} className="w-full h-full object-cover" /> : null}
+                      </div>
+
+                      <div className="flex-1">
+                        <div className="font-black text-gray-900">{x.name}</div>
+                        <div className="text-xs text-gray-600">{x.brand} • {x.city || "-"}</div>
+                        <div className="text-xs font-bold text-gray-900 mt-1">
+                          ₹{Number(x.price_per_day || 0).toLocaleString()}/day
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        className="px-3 py-2 rounded-xl bg-gray-900 text-white text-xs font-black"
+                        onClick={() => {
+                          const qs = new URLSearchParams(location.search);
+                          qs.set("car_id", String(x.id));
+                          navigate(`/review-booking?${qs.toString()}`, { state: { car: x } });
+                        }}
+                      >
+                        Book This
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+
         </div>
       </div>
     </div>

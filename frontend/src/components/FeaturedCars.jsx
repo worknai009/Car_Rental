@@ -94,9 +94,12 @@ const FeaturedCars = () => {
         }));
 
         // ✅ latest 6
-        const latest = [...normalized]
-          .sort((a, b) => Number(b.id) - Number(a.id))
-          .slice(0, 6);
+       const latest = [...normalized]
+  .sort((a, b) =>
+    Number(b.is_available) - Number(a.is_available) || Number(b.id) - Number(a.id)
+  )
+  .slice(0, 6);
+
 
         setCars(latest);
       } catch (err) {
@@ -195,7 +198,7 @@ const FeaturedCars = () => {
                   <div className="relative h-56 overflow-hidden bg-gray-100">
                     {car.cars_image ? (
                       <img
-                        src={`http://localhost:1000/public/${car.cars_image}`}
+                        src={`${import.meta.env.VITE_API_URL}/public/${car.cars_image}`}
                         alt={car.name}
                         className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                       />

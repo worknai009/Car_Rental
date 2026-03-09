@@ -65,7 +65,7 @@ const EditCar = () => {
       badge: c.badge ?? "",
     });
 
-    setPreview(c.cars_image ? `http://localhost:1000/public/${c.cars_image}` : "");
+    setPreview(c.cars_image ? `${import.meta.env.VITE_API_URL}/public/${c.cars_image}` : "");
   };
 
   useEffect(() => {

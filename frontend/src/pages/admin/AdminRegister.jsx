@@ -16,7 +16,7 @@ const AdminRegister = () => {
     setError("");
 
     try {
-      const res = await axios.post("http://localhost:1000/admin/auth/register", formData);
+      const res = await axios.post(`${import.meta.env.VITE_API_URL}/admin/auth/register`, formData);
       if (res.data.success) {
         alert("Admin registered successfully!");
         navigate("/admin/login");

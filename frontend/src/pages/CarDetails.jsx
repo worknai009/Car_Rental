@@ -134,7 +134,7 @@ const CarDetails = () => {
 
   const imageUrl = useMemo(() => {
     if (!car?.cars_image) return "";
-    return `http://localhost:1000/public/${car.cars_image}`;
+    return `${import.meta.env.VITE_API_URL}/public/${car.cars_image}`;
   }, [car]);
 
   const handleBookNow = () => {

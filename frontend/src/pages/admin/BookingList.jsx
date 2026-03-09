@@ -81,10 +81,10 @@ const StatusChip = ({ value }) => {
     s === "PAID" || s === "COMPLETED"
       ? "success"
       : s === "CANCELLED"
-      ? "error"
-      : s === "APPROVED" || s === "CONFIRMED"
-      ? "info"
-      : "warning";
+        ? "error"
+        : s === "APPROVED" || s === "CONFIRMED"
+          ? "info"
+          : "warning";
 
   return (
     <Chip size="small" label={labelStatus(s)} color={color} variant="outlined" />
@@ -129,6 +129,10 @@ const BookingList = () => {
         start_date: r.start_date ?? r.startDate ?? r.from_date ?? r.fromDate ?? null,
         end_date: r.end_date ?? r.endDate ?? r.to_date ?? r.toDate ?? null,
         total_amount: r.total_amount ?? r.totalAmount ?? r.amount ?? null,
+        car_owner_name: r.car_owner_name ?? r.owner_name ?? null,
+        car_owner_email: r.car_owner_email ?? r.owner_email ?? null,
+        car_owner_phone: r.car_owner_phone ?? r.owner_phone ?? null,
+
 
         // support phone/message fields for inquire UI
         user_phone: r.user_phone ?? r.phone ?? r.mobile ?? r.contact ?? null,
@@ -190,6 +194,7 @@ const BookingList = () => {
     setDetails(null);
     setDetailsLoading(true);
 
+
     try {
       const res = await adminApi.get(`/admin/bookings/${id}`);
       const d = res.data || {};
@@ -200,6 +205,10 @@ const BookingList = () => {
         start_date: d.start_date ?? d.startDate ?? d.from_date ?? d.fromDate ?? null,
         end_date: d.end_date ?? d.endDate ?? d.to_date ?? d.toDate ?? null,
         total_amount: d.total_amount ?? d.totalAmount ?? d.amount ?? null,
+        car_owner_name: d.car_owner_name ?? null,
+        car_owner_email: d.car_owner_email ?? null,
+        car_owner_phone: d.car_owner_phone ?? null,
+
       });
     } catch (err) {
       console.error("Booking details error:", err);
@@ -297,6 +306,10 @@ const BookingList = () => {
         start_date: d.start_date ?? d.startDate ?? d.from_date ?? d.fromDate ?? null,
         end_date: d.end_date ?? d.endDate ?? d.to_date ?? d.toDate ?? null,
         total_amount: d.total_amount ?? d.totalAmount ?? d.amount ?? null,
+        car_owner_name: d.car_owner_name ?? null,
+        car_owner_email: d.car_owner_email ?? null,
+        car_owner_phone: d.car_owner_phone ?? null,
+
 
         user_phone: d.user_phone ?? d.phone ?? d.mobile ?? d.contact ?? null,
         inquiry_text:
@@ -339,6 +352,7 @@ const BookingList = () => {
 
   // small row line component
   const Line = ({ icon, label, value }) => (
+
     <Box
       sx={{
         display: "flex",
@@ -431,7 +445,7 @@ const BookingList = () => {
                       <Printer size={18} />
                     </IconButton>
 
-                    <Button
+                    {/* <Button
                       onClick={() => deleteBooking(d.id)}
                       startIcon={<Trash2 size={18} />}
                       sx={{
@@ -446,11 +460,19 @@ const BookingList = () => {
                       variant="contained"
                     >
                       Delete
-                    </Button>
+                    </Button> */}
                   </Box>
                 </Box>
 
                 {/* SUMMARY LINE (like screenshot icons) */}
+
+                <Box display="flex" alignItems="center" gap={1}>
+                  <Car size={18} />
+                  <Typography>
+                    Owner: {safeText(d.car_owner_name)}
+                  </Typography>
+                </Box>
+
                 <Box
                   sx={{
                     mt: 1.2,
@@ -502,6 +524,11 @@ const BookingList = () => {
                       </Typography>
 
                       <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
+
+                        <Line icon={<User size={16} />} label="Car Owner Name" value={d.car_owner_name} />
+                        <Line icon={<Mail size={16} />} label="Car Owner Email" value={d.car_owner_email} />
+                        <Line icon={<Phone size={16} />} label="Car Owner Phone" value={d.car_owner_phone} />
+
                         <Line icon={<Clock size={16} />} label="Booking ID" value={d.booking_id} />
                         <Line icon={<Clock size={16} />} label="Created At" value={d.created_at} />
 
@@ -529,7 +556,7 @@ const BookingList = () => {
                           <Box
                             component="img"
                             alt="car"
-                            src={`http://localhost:1000${d.car_image}`}
+                            src={`${import.meta.env.VITE_API_URL}${d.car_image}`}
                             sx={{
                               mt: 1,
                               width: "100%",
@@ -609,7 +636,7 @@ const BookingList = () => {
                   <b>Email</b>
                   <span>{safeText(details.user_email)}</span>
                 </div>
-                
+
               </div>
 
               <div className="box">

@@ -214,11 +214,10 @@ const Features = () => {
                     </div>
 
                     <div
-                      className={`absolute -top-2 -right-2 w-8 h-8 bg-green-500 rounded-full flex items-center justify-center transform transition-all duration-500 ${
-                        isHovered
+                      className={`absolute -top-2 -right-2 w-8 h-8 bg-green-500 rounded-full flex items-center justify-center transform transition-all duration-500 ${isHovered
                           ? "scale-100 opacity-100"
                           : "scale-0 opacity-0"
-                      }`}
+                        }`}
                     >
                       <CheckCircle2 className="w-5 h-5 text-white" />
                     </div>
@@ -234,11 +233,10 @@ const Features = () => {
                     </p>
 
                     <div
-                      className={`flex items-center gap-2 text-sm font-semibold text-cyan-600 pt-2 transform transition-all duration-500 ${
-                        isHovered
+                      className={`flex items-center gap-2 text-sm font-semibold text-cyan-600 pt-2 transform transition-all duration-500 ${isHovered
                           ? "translate-x-0 opacity-100"
                           : "-translate-x-4 opacity-0"
-                      }`}
+                        }`}
                     >
                       <span>Learn more</span>
                       <ArrowRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform duration-300" />
@@ -255,7 +253,7 @@ const Features = () => {
         </div>
 
         {/* ✅ CARS SECTION (Dynamic - Only 6 Cars) */}
-        <div className="cars-section mb-16">
+        {/* <div className="cars-section mb-16">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-2xl md:text-3xl font-black text-gray-900">
               Latest Cars
@@ -287,7 +285,7 @@ const Features = () => {
                     <div className="h-44 bg-gray-100">
                       {c.cars_image ? (
                         <img
-                          src={`http://localhost:1000/public/${c.cars_image}`}
+                          src={`${import.meta.env.VITE_API_URL}/public/${c.cars_image}`}
                           alt={c.name}
                           className="w-full h-full object-cover"
                         />
@@ -364,7 +362,7 @@ const Features = () => {
                 ))}
             </div>
           )}
-        </div>
+        </div> */}
 
         {/* CTA Banner */}
         <div className="cta-banner relative">

@@ -327,6 +327,8 @@ const CarsPage = () => {
       case "newest":
         result.sort((a, b) => Number(b.year || 0) - Number(a.year || 0));
         break;
+      case "is_available":
+        result.sort( (a, b) => Number(b.is_available) - Number(a.is_available));
       default:
         break;
     }
@@ -642,7 +644,7 @@ const CarsPage = () => {
             {filteredCars.map((car) => {
               const isFavorite = favorites.includes(car.id);
               const isAvailable = Number(car.is_available) === 1;
-              const imageUrl = car.cars_image ? `http://localhost:1000/public/${car.cars_image}` : "";
+              const imageUrl = car.cars_image ? `${import.meta.env.VITE_API_URL}/public/${car.cars_image}` : "";
 
               return (
                 <div
