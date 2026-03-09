@@ -29,13 +29,13 @@ app.use(
   })
 );
 
-app.use("/public", express.static("public"));
-app.use("/uploads", express.static(path.join(__dirname, "public", "uploads")));
+app.use("/api/public", express.static("public"));
+app.use("/api/uploads", express.static(path.join(__dirname, "public", "uploads")));
 
 // ROUTES
-app.use("/", user_routes);
-app.use("/admin", admin_routes);
-app.use("/car-register", car_register);
+app.use("/api/", user_routes);
+app.use("/api/admin", admin_routes);
+app.use("/api/car-register", car_register);
 
 const PORT = process.env.PORT || 1000;
 app.listen(PORT, () => {

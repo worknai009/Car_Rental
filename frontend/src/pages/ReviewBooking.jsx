@@ -511,7 +511,7 @@ const ReviewBookingPage = () => {
               <div className="grid gap-3">
                 {suggestions.map((x) => {
                   const img = x.cars_image
-                    ? `http://localhost:1000/public/${x.cars_image}`
+                    ? `${import.meta.env.VITE_API_URL}/public/${x.cars_image}`
                     : "";
                   return (
                     <div key={x.id} className="flex gap-3 p-3 rounded-2xl border bg-gray-50">

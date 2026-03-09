@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:1000";
+const API_BASE = import.meta.env.VITE_API_URL;
 
 const FeedbackList = () => {
   const [feedbacks, setFeedbacks] = useState([]);

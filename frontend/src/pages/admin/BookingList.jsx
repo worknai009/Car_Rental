@@ -657,7 +657,7 @@ const BookingList = () => {
                 </div>
 
                 {details.car_image ? (
-                  <img src={`http://localhost:1000${details.car_image}`} alt="car" />
+                  <img src={`${import.meta.env.VITE_API_URL}${details.car_image}`} alt="car" />
                 ) : null}
               </div>
             </div>
