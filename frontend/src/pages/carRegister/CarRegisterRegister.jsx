@@ -2,10 +2,11 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { UserPlus } from "lucide-react";
 import { useCarRegisterAuth } from "../../components/carRegister/CarRegisterAuthContext";
+import carRegisterApi from "../../utils/carRegisterApi";
 
 const CarRegisterRegister = () => {
   const navigate = useNavigate();
-  const { register, loading } = useCarRegisterAuth();
+  const { loading } = useCarRegisterAuth();
 
   const [form, setForm] = useState({ name: "", phone: "", email: "", password: "" });
   const [err, setErr] = useState("");
@@ -22,12 +23,13 @@ const onSubmit = async (e) => {
   setErr("");
   setMsg("");
   try {
-    await register(form);
+    await carRegisterApi.post("/register", form);
  alert("✅ Registered successfully! Please login."); // ✅ alert added
     setMsg("Registered successfully. Please login.");
     setTimeout(() => navigate("/car-register/login", { replace: true }), 800);
   } catch (error) {
-    setErr(error.message || "Register failed");
+    const errorMsg = error.response?.data?.message || error.message || "Register failed";
+    setErr(errorMsg);
   }
 };
 

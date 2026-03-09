@@ -45,7 +45,7 @@ exports.createCar = async (req, res) => {
     await exe(
       `INSERT INTO cars 
       (name, brand, car_details, cars_image, category_id, price_per_day, price_per_km, is_available, city, year, seats, fuel_type, rating, badge, is_active, created_at)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,1,NOW())`,
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,NOW())`,
       [
         name,
         brand,
