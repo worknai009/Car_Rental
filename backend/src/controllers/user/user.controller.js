@@ -49,37 +49,52 @@ const jwt = require("jsonwebtoken");
 
 /* ================= GET ALL USERS ================= */
 exports.getAllUsers = async (req, res) => {
-  const users = await exe(
-    "SELECT id,name,email,created_at FROM users ORDER BY id DESC"
-  );
-  res.json(users);
+  try {
+    const users = await exe(
+      "SELECT id,name,email,created_at FROM users ORDER BY id DESC"
+    );
+    res.json(users);
+  } catch (err) {
+    console.error("GET ALL USERS ERROR:", err);
+    res.status(500).json({ message: "Failed to fetch users" });
+  }
 };
 
 /* ================= GET USER BY ID ================= */
 exports.getProfile = async (req, res) => {
-  const { id } = req.params;
+  try {
+    const { id } = req.params;
 
-  const data = await exe(
-    "SELECT id,name,email,created_at FROM users WHERE id=?",
-    [id]
-  );
+    const data = await exe(
+      "SELECT id,name,email,created_at FROM users WHERE id=?",
+      [id]
+    );
 
-  if (!data.length) {
-    return res.status(404).json({ message: "User not found" });
+    if (!data.length) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.json(data[0]);
+  } catch (err) {
+    console.error("GET PROFILE ERROR:", err);
+    res.status(500).json({ message: "Failed to fetch profile" });
   }
-
-  res.json(data[0]);
 };
 
 /* ================= UPDATE PROFILE ================= */
 exports.updateProfile = async (req, res) => {
-  const { id } = req.params;
-  const { name, email } = req.body;
+  try {
+    const { id } = req.params;
+    const { name, email } = req.body;
 
-  await exe(
-    "UPDATE users SET name=?, email=? WHERE id=?",
-    [name, email, id]
-  );
+    await exe(
+      "UPDATE users SET name=?, email=? WHERE id=?",
+      [name, email, id]
+    );
 
-  res.json({ message: "Profile updated successfully" });
+    res.json({ message: "Profile updated successfully" });
+  } catch (err) {
+    console.error("UPDATE PROFILE ERROR:", err);
+    res.status(500).json({ message: "Failed to update profile" });
+  }
 };

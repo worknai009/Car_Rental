@@ -94,7 +94,7 @@ exports.resetPassword = async (req, res) => {
 
     // ✅ FIX: your column name is `password`
     const result = await exe(
-      "UPDATE users SET password=?, reset_token_hash=NULL, reset_token_expires=NULL WHERE id=?",
+      "UPDATE users SET password=? WHERE id=?",
       [hash, payload.id]
     );
 

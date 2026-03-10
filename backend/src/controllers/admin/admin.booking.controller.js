@@ -217,14 +217,17 @@ exports.deleteBooking = async (req, res) => {
 
     if (!id) return res.status(400).json({ message: "Booking id is required" });
 
-    // ✅ first check booking exists
-    const found = await exe(`SELECT id FROM bookings WHERE id='${id}' LIMIT 1`);
+    // ✅ first check booking exists (parameterized query)
+    const found = await exe(`SELECT id FROM bookings WHERE id=? LIMIT 1`, [id]);
     if (!found || found.length === 0) {
       return res.status(404).json({ message: "Booking not found" });
     }
 
-    // ✅ delete booking
-    await exe(`DELETE FROM bookings WHERE id='${id}'`);
+    // ✅ delete related cancel_requests first (FK cleanup)
+    await exe(`DELETE FROM cancel_requests WHERE booking_id=?`, [id]);
+
+    // ✅ delete booking (parameterized query)
+    await exe(`DELETE FROM bookings WHERE id=?`, [id]);
 
     return res.json({ message: "Booking deleted successfully" });
   } catch (err) {

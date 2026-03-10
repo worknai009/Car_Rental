@@ -185,7 +185,7 @@ const MyBookings = () => {
                         </div>
 
                         <div className="text-xs mt-1">
-                          Status: <span className="font-bold">{st || "CONFIRMED"}</span>
+                          Status: <span className="font-bold">{st || "BOOKED"}</span>
                         </div>
                       </div>
                     </div>
@@ -200,12 +200,12 @@ const MyBookings = () => {
                         Invoice PDF
                       </button>
 
-                      {/* ✅ Hide Cancel button when COMPLETED */}
-                      {st !== "COMPLETED" && (
+                      {/* ✅ Hide Cancel button when COMPLETED or CANCELLED */}
+                      {st !== "COMPLETED" && st !== "CANCELLED" && (
                         <button
                           onClick={() => openCancelForm(b)}
-                          disabled={st === "CANCELLED" || st === "CANCEL_REQUESTED"}
-                          className={`px-4 py-2 rounded-xl font-bold flex items-center gap-2 ${st === "CANCELLED" || st === "CANCEL_REQUESTED"
+                          disabled={st === "CANCEL_REQUESTED"}
+                          className={`px-4 py-2 rounded-xl font-bold flex items-center gap-2 ${st === "CANCEL_REQUESTED"
                               ? "bg-gray-200 text-gray-500 cursor-not-allowed"
                               : "bg-orange-100 text-orange-700"
                             }`}

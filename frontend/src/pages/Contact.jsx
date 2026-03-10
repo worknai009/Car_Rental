@@ -56,39 +56,39 @@ const Contact = () => {
   const handleChange = (e) =>
     setFormData({ ...formData, [e.target.name]: e.target.value });
 
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  setIsSubmitting(true);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
 
-  try {
-    const payload = {
-      name: formData.name,
-      email: formData.email,
-      phone: formData.phone,
-      subject: formData.subject,
-      message: formData.message,
-    };
+    try {
+      const payload = {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        subject: formData.subject,
+        message: formData.message,
+      };
 
-    const res = await userApi.post("/contact", payload);
+      const res = await userApi.post("/contact", payload);
 
-    setIsSubmitted(true);
-    setFormData({ name: "", email: "", phone: "", subject: "", message: "" });
+      setIsSubmitted(true);
+      setFormData({ name: "", email: "", phone: "", subject: "", message: "" });
 
-    setTimeout(() => setIsSubmitted(false), 5000);
-  } catch (err) {
-    alert(err?.response?.data?.message || "Failed to send message");
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+      setTimeout(() => setIsSubmitted(false), 5000);
+    } catch (err) {
+      alert(err?.response?.data?.message || "Failed to send message");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
 
   const contactInfo = [
     {
       icon: Phone,
       title: "Phone",
-      value: "+91 90224 85182",
-      link: "tel:+919022485182",
+      value: "+91 9923400441",
+      link: "tel:+919923400441",
       color: "from-cyan-500 to-cyan-600",
       bgColor: "bg-cyan-50",
     },
@@ -174,9 +174,8 @@ const handleSubmit = async (e) => {
               <a
                 key={index}
                 href={info.link || "#"}
-                className={`contact-info-card group bg-white rounded-3xl p-8 shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 text-center border border-gray-100 ${
-                  info.link ? "cursor-pointer" : "cursor-default"
-                }`}
+                className={`contact-info-card group bg-white rounded-3xl p-8 shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 text-center border border-gray-100 ${info.link ? "cursor-pointer" : "cursor-default"
+                  }`}
               >
                 <div
                   className={`w-16 h-16 bg-gradient-to-br ${info.color} rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg transform group-hover:scale-110 group-hover:rotate-6 transition-all duration-500`}

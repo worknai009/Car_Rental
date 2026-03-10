@@ -36,7 +36,7 @@ async function checkOverlapBooking(car_id, start_date, end_date) {
     `SELECT id
      FROM bookings
      WHERE car_id=?
-       AND LOWER(status) <> 'cancelled'
+       AND LOWER(status) NOT IN ('cancelled', 'cancel_requested')
        AND NOT (end_date < ? OR start_date > ?)
      LIMIT 1`,
     [car_id, start_date, end_date]

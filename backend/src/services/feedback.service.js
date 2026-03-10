@@ -49,6 +49,15 @@ exports.createFeedback = async ({ user_id, booking_id, rating, message }) => {
 
   if (!booking) throw new Error("Invalid booking_id (not found or not yours)");
 
+  // ✅ prevent duplicate feedback for same booking
+  const existingFeedback = await db.exe(
+    `SELECT id FROM feedback WHERE booking_id=? AND user_id=? LIMIT 1`,
+    [booking_id, user_id]
+  );
+  if (existingFeedback && existingFeedback.length > 0) {
+    throw new Error("You have already submitted feedback for this booking");
+  }
+
   const insertSql = `
     INSERT INTO feedback (user_id, booking_id, car_id, message, rating, created_at)
     VALUES (?, ?, ?, ?, ?, NOW())

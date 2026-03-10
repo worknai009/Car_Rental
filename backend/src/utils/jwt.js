@@ -1,6 +1,9 @@
 const jwt = require("jsonwebtoken");
 
-const JWT_SECRET = process.env.JWT_SECRET || "worknai";
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  console.error("⚠️  JWT_SECRET is not set in .env — tokens will be insecure!");
+}
 const JWT_EXPIRE = process.env.JWT_EXPIRE || "1d";
 
 /**

@@ -7,7 +7,8 @@ exports.dashboard = async (req, res) => {
     const revenueRows = await exe(`
       SELECT IFNULL(SUM(total_amount), 0) AS total
       FROM bookings
-      WHERE MONTH(created_at) = MONTH(CURDATE())
+      WHERE status = 'COMPLETED'
+        AND MONTH(created_at) = MONTH(CURDATE())
         AND YEAR(created_at) = YEAR(CURDATE())
     `);
 
@@ -49,7 +50,7 @@ exports.revenueReport = async (req, res) => {
     const rows = await exe(`
       SELECT IFNULL(SUM(total_amount), 0) AS total_revenue
       FROM bookings
-      WHERE status = 'Paid'
+      WHERE status = 'COMPLETED'
     `);
 
     res.json(rows[0]);
@@ -70,6 +71,7 @@ exports.barChart = async (req, res) => {
       FROM bookings b
       JOIN cars car ON b.car_id = car.id
       JOIN categories cat ON car.category_id = cat.id
+      WHERE b.status NOT IN ('CANCELLED', 'CANCEL_REQUESTED')
       GROUP BY month, category
       ORDER BY MIN(b.created_at)
     `);
