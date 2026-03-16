@@ -9,8 +9,9 @@ import AdminLayout from "./components/AdminLayout";
 import Home from "./components/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-import Car from "./pages/CarsPage";
+import CarsPage from "./pages/CarsPage";
 import About from "./pages/About";
+// Removed BusesPage
 import Contact from "./pages/Contact";
 import ReviewBooking from "./pages/ReviewBooking";
 import MyBookings from "./pages/MyBookings";
@@ -18,6 +19,9 @@ import CarDetails from "./pages/CarDetails";
 import ResetPassword from "./pages/ResetPassword.jsx";
 import ForgotPassword from "./pages/ForgotPassword.jsx";
 import EventsPage from "./pages/EventsPage";
+import ToursPage from "./pages/ToursPage";
+import TourDetails from "./pages/TourDetails";
+import TourBookingsUser from "./pages/TourBookingsUser";
 
 
 // ADMIN PAGES
@@ -36,6 +40,10 @@ import FeedbackList from "./pages/admin/FeedbackList.jsx";
 import CarRegisterRequests from "./pages/admin/CarRegisterRequests.jsx";
 import CarRegisterUsers from "./pages/admin/CarRegisterUsers.jsx"
 import EventRequests from "./pages/admin/EventRequests";
+import ToursList from "./pages/admin/ToursList";
+import AddTour from "./pages/admin/AddTour";
+import TourBookingsAdmin from "./pages/admin/TourBookingsAdmin";
+import TourDetailsAdmin from "./pages/admin/TourDetailsAdmin";
 
 
 
@@ -63,6 +71,9 @@ import CarRegisterCars from "./pages/carRegister/CarRegisterCars.jsx";
 import CarRegisterAddCar from "./pages/carRegister/CarRegisterAddCar.jsx";
 import CarRegisterBookings from "./pages/carRegister/CarRegisterBookings.jsx";
 import CarRegisterProfile from "./pages/carRegister/CarRegisterProfile.jsx";
+import CarRegisterTours from "./pages/carRegister/CarRegisterTours.jsx";
+import CarRegisterAddTour from "./pages/carRegister/CarRegisterAddTour.jsx";
+import TourDetailsPartner from "./pages/carRegister/TourDetailsPartner.jsx";
 
 
 
@@ -94,7 +105,8 @@ const App = () => {
         {/* ✅ PUBLIC */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        <Route path="/cars" element={<Car />} />
+        <Route path="/cars" element={<CarsPage />} />
+        {/* Removed /buses route */}
         <Route path="/events" element={<EventsPage />} />
         <Route path="/cars/:id" element={<CarDetails />} />
         <Route path="/review-booking"  element={  <UserPrivateRoute>  <ReviewBooking />  </UserPrivateRoute>  }  />
@@ -102,6 +114,9 @@ const App = () => {
         <Route path="/about" element={<About />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/tours" element={<ToursPage />} />
+        <Route path="/tours/:id" element={<TourDetails />} />
+        <Route path="/my-tours" element={<UserPrivateRoute> <TourBookingsUser /> </UserPrivateRoute>} />
         <Route path="/reset-password" element={<ResetPassword />} />
       </Route>
 
@@ -132,6 +147,11 @@ const App = () => {
         <Route path="car-register-requests" element={<CarRegisterRequests />} />
         <Route path="car-register-users" element={<CarRegisterUsers />} />
         <Route path="event-requests" element={<EventRequests />} />
+        <Route path="tours" element={<ToursList />} />
+        <Route path="tours/:id" element={<TourDetailsAdmin />} />
+        <Route path="tours/add" element={<AddTour />} />
+        <Route path="tours/edit/:id" element={<AddTour />} />
+        <Route path="tour-bookings" element={<TourBookingsAdmin />} />
       </Route>
 
 
@@ -150,6 +170,10 @@ const App = () => {
           <Route path="cars/add" element={<CarRegisterAddCar />} />
           <Route path="bookings" element={<CarRegisterBookings />} />
           <Route path="profile" element={<CarRegisterProfile />} />
+          <Route path="tours" element={<CarRegisterTours />} />
+          <Route path="tours/:id" element={<TourDetailsPartner />} />
+          <Route path="tours/add" element={<CarRegisterAddTour />} />
+          <Route path="tours/edit/:id" element={<CarRegisterAddTour />} />
         </Route>
       </Route>
 

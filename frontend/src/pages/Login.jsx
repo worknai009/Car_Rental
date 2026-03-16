@@ -107,7 +107,7 @@ const Login = () => {
     setOtpLoading(true);
 
     try {
-      const user_id = formData.user_id; // make sure this is set after login
+      const user_id = formData.user_id;      // Standardized API call
       const res = await fetch(`${import.meta.env.VITE_API_URL}/auth/verify-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -121,7 +121,7 @@ const Login = () => {
 
       if (!res.ok) throw new Error(data.message || "OTP verification failed");
 
-      console.log("OTP Verified:", data);
+      // OTP Verified
 
       // redirect to home page or dashboard
       setShowOtpModal(false);
@@ -141,7 +141,7 @@ const Login = () => {
     if (resendTimer > 0) return;
     setResendTimer(30);
     setOtp(["", "", "", "", "", ""]);
-    console.log("OTP Resent");
+    console.log("OTP Verified");
   };
 
   const features = [

@@ -46,6 +46,7 @@ exports.addCarRequest = async (req, res) => {
       price_per_day,
       price_per_km,
       requested_category_id,
+      vehicle_type,
     } = req.body;
 
     // ✅ optional: validation
@@ -56,15 +57,16 @@ exports.addCarRequest = async (req, res) => {
     // ✅ FIX: 18 placeholders now ✅
     await exe(
       `INSERT INTO car_registration_requests
-      (car_user_id, name, brand, category_id, car_details, city, year, seats, fuel_type,
+      (car_user_id, name, brand, category_id, vehicle_type, car_details, city, year, seats, fuel_type,
        cars_image, requested_category_id, price_per_day, price_per_km,
        rc_book, insurance_copy, puc_certificate, id_proof, status)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [
         req.user.id,
         name,
         brand,
         category_id,
+        vehicle_type || "CAR",
         car_details || null,
         city || null,
         year || null,
@@ -115,6 +117,7 @@ exports.getMyCars = async (req, res) => {
         price_per_day,
         price_per_km,
         status,
+        vehicle_type,
         admin_remark,
         created_at,
         updated_at
@@ -152,6 +155,7 @@ exports.getMyCarsAll = async (req, res) => {
         price_per_day,
         price_per_km,
         rc_book,
+        vehicle_type,
         insurance_copy,
         puc_certificate,
         id_proof,
@@ -199,11 +203,26 @@ exports.getDashboardStats = async (req, res) => {
           JOIN cars c ON c.id = b.car_id
           WHERE c.car_user_id = ?
             AND b.status IN ('PAID', 'COMPLETED')
-        ) AS total_revenue
+        ) AS total_revenue,
+
+        /* tour packages count */
+        (
+          SELECT COUNT(*)
+          FROM tours_packages
+          WHERE created_by = ? AND created_by_role = 'CAR_REGISTER'
+        ) AS total_tour_packages,
+
+        /* tour bookings count */
+        (
+          SELECT COUNT(*)
+          FROM tour_bookings tb
+          JOIN tours_packages tp ON tb.tour_id = tp.id
+          WHERE tp.created_by = ? AND tp.created_by_role = 'CAR_REGISTER'
+        ) AS total_tour_bookings
 
       FROM car_registration_requests
       WHERE car_user_id = ?`,
-      [uid, uid, uid]
+      [uid, uid, uid, uid, uid]
     );
 
     const s = rows?.[0] || {};
@@ -215,6 +234,8 @@ exports.getDashboardStats = async (req, res) => {
       rejected_cars: Number(s.rejected_cars) || 0,
       total_bookings: Number(s.total_bookings) || 0,
       total_revenue: Number(s.total_revenue) || 0,
+      total_tour_packages: Number(s.total_tour_packages) || 0,
+      total_tour_bookings: Number(s.total_tour_bookings) || 0,
     });
   } catch (err) {
     console.error(err);
@@ -343,6 +364,7 @@ exports.updateCarBothTables = async (req, res) => {
       price_per_day,
       price_per_km,
       requested_category_id,
+      vehicle_type,
     } = req.body;
 
     // ✅ Build update for car_registration_requests
@@ -366,6 +388,7 @@ exports.updateCarBothTables = async (req, res) => {
     addReqField("fuel_type", fuel_type);
     addReqField("price_per_day", price_per_day);
     addReqField("price_per_km", price_per_km);
+    addReqField("vehicle_type", vehicle_type);
 
     if (newCarsImage) addReqField("cars_image", newCarsImage);
     if (newRcBook) addReqField("rc_book", newRcBook);
@@ -403,6 +426,7 @@ exports.updateCarBothTables = async (req, res) => {
     addCarsField("fuel_type", fuel_type);
     addCarsField("price_per_day", price_per_day);
     addCarsField("price_per_km", price_per_km);
+    addCarsField("vehicle_type", vehicle_type);
     if (newCarsImage) addCarsField("cars_image", newCarsImage);
 
     // update cars only if exists (APPROVED creates record)

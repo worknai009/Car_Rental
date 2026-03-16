@@ -10,6 +10,8 @@ import {
   Menu as MenuIcon,
   Car,
   Layers,
+  MapPin,
+  ClipboardList,
 } from "lucide-react";
 
 const Sidebar = () => {
@@ -82,6 +84,17 @@ const Sidebar = () => {
         </MenuItem>
         <MenuItem icon={<Car />} component={<Link to="/admin/cars" />}>
           Cars List
+        </MenuItem>
+ 
+        <p className="text-xs text-gray-500 px-6 py-2 uppercase">Tours Management</p>
+        <MenuItem icon={<MapPin />} component={<Link to="/admin/tours/add" />}>
+          Add Tour
+        </MenuItem>
+        <MenuItem icon={<ClipboardList />} component={<Link to="/admin/tours" />}>
+          Tours List
+        </MenuItem>
+        <MenuItem icon={<ClipboardList />} component={<Link to="/admin/tour-bookings" />}>
+          Tour Bookings
         </MenuItem>
 
         <p className="text-xs text-gray-500 px-6 py-2 uppercase">Charts</p>

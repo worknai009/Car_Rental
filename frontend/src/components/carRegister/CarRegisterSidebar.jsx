@@ -7,6 +7,7 @@ import {
   ClipboardList,
   User2,
   LogOut,
+  MapPin,
 } from "lucide-react";
 import { useCarRegisterAuth } from "./CarRegisterAuthContext";
 
@@ -23,6 +24,7 @@ const CarRegisterSidebar = () => {
     { name: "My Cars", to: "/car-register/cars", icon: CarFront },
     { name: "Add Car", to: "/car-register/cars/add", icon: PlusCircle },
     { name: "Bookings", to: "/car-register/bookings", icon: ClipboardList },
+    { name: "Tours", to: "/car-register/tours", icon: MapPin },
     { name: "Profile", to: "/car-register/profile", icon: User2 },
   ];
 

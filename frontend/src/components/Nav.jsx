@@ -9,7 +9,8 @@ import {
   Mail,
   Bookmark,
   ChevronDown,
-  
+  Bus,
+  Map as MapIcon,
 } from "lucide-react";
 
 const Nav = () => {
@@ -22,11 +23,12 @@ const Nav = () => {
 
   const menuItems = [
     { name: "Home", path: "/", icon: Home },
-    { name: "Cars", path: "/cars", icon: Package },
+    { name: "Cars", path: "/cars", icon: Car },
     { name: "My Bookings", path: "/my-bookings", icon: Bookmark },
     { name: "About", path: "/about", icon: Info },
     { name: "Contact", path: "/contact", icon: Mail },
-    {name: "Events" , path: "/events", icon:Mail}
+    { name: "Events", path: "/events", icon: Mail },
+    { name: "Tours", path: "/tours", icon: MapIcon },
   ];
 
   // ✅ Change paths if your app uses different routes
@@ -88,7 +90,7 @@ const Nav = () => {
 
             {/* Center Section - Floating Menu Pills (Desktop) */}
             <div className="hidden lg:flex items-center justify-center absolute left-1/2 transform -translate-x-1/2">
-              <div className="flex items-center space-x-1 bg-white/60 backdrop-blur-xl rounded-full p-2 shadow-lg border border-gray-200/50">
+              <div className="flex items-center space-x-0.5 bg-white/70 backdrop-blur-2xl rounded-full p-1.5 shadow-xl border border-white/40">
                 {menuItems.map((item) => {
                   const Icon = item.icon;
                   return (
@@ -96,11 +98,11 @@ const Nav = () => {
                       key={item.name}
                       to={item.path}
                       onClick={() => setActiveItem(item.name.toLowerCase())}
-                      className={`relative flex items-center gap-2 px-5 py-2.5 rounded-full font-semibold transition-all duration-500 group ${
+                      className={`relative flex items-center gap-1.5 px-3.5 py-2 rounded-full font-bold transition-all duration-300 group ${
                         activeItem === item.name.toLowerCase()
                           ? "bg-gradient-to-r from-cyan-600 to-teal-600 text-white shadow-lg scale-105"
                           : "text-gray-700 hover:bg-cyan-50 hover:text-cyan-600"
-                      }`}
+                      } active:scale-95`}
                     >
                       <Icon
                         className={`h-4 w-4 transition-transform duration-300 ${

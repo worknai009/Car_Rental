@@ -31,6 +31,7 @@ exports.listCarRequests = async (req, res) => {
         crr.fuel_type,
         crr.seats,
         crr.price_per_day,
+        crr.vehicle_type,
         crr.status,
 
         crr.cars_image AS cars_image,
@@ -232,9 +233,9 @@ exports.approveCarRequest = async (req, res) => {
       await db.exe(
         `INSERT INTO cars
           (car_user_id, car_request_id,
-           name, brand, car_details, cars_image, category_id, price_per_day, price_per_km,
+           name, brand, car_details, cars_image, category_id, vehicle_type, price_per_day, price_per_km,
            is_available, city, year, seats, fuel_type, rating, badge, is_active, created_at)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW())`,
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW())`,
         [
           r.car_user_id, // ✅ car-register user id
           r.id,          // ✅ request id
@@ -244,6 +245,7 @@ exports.approveCarRequest = async (req, res) => {
           r.car_details,
           r.cars_image,
           r.category_id,
+          r.vehicle_type,
           r.price_per_day,
           r.price_per_km,
           1,

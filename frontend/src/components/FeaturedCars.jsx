@@ -83,8 +83,8 @@ const FeaturedCars = () => {
       try {
         setLoading(true);
 
-        // ✅ Fetch cars (you can use /cars or /cars/available)
-        const res = await userApi.get("/cars");
+        // ✅ Fetch only cars for featured section
+        const res = await userApi.get("/cars/filter", { params: { vehicle_type: 'CAR' } });
         const list = Array.isArray(res.data) ? res.data : [];
 
         // ✅ normalize is_available
@@ -253,7 +253,7 @@ const FeaturedCars = () => {
                     </h3>
 
                     <p className="text-sm text-gray-600">
-                      {car.brand} • {car.category_name || "Category"}
+                      {car.brand} • {car.category_name || "Category"} • {car.vehicle_type || "Car"}
                     </p>
 
                     <div className="flex items-center gap-4">

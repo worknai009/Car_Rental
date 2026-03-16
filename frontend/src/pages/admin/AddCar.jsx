@@ -24,6 +24,7 @@ const AddCar = () => {
     fuel_type: "Petrol",
     rating: "",
     badge: "",
+    vehicle_type: "Car",
   });
 
   const fetchCategories = async () => {
@@ -227,6 +228,18 @@ const AddCar = () => {
           <option value="PLATINUM">Platinum</option>
           <option value="GOLD">Gold</option>
           <option value="SILVER">Silver</option>
+        </select>
+
+        {/* ✅ Vehicle Type: Car / Bus */}
+        <select
+          className="border p-2 rounded"
+          name="vehicle_type"
+          value={form.vehicle_type}
+          onChange={onChange}
+          required
+        >
+          <option value="Car">Car</option>
+          <option value="Bus">Bus</option>
         </select>
 
         {/* Image */}

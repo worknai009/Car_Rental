@@ -75,6 +75,7 @@ const INITIAL_FORM = {
   price_per_day: "",
   price_per_km: "",
   requested_category_id: "",
+  vehicle_type: "Car",
 };
 
 const INITIAL_FILES = {
@@ -165,20 +166,31 @@ const CarRegisterAddCar = () => {
               required
             />
 
-            <select
-              name="category_id"
-              value={form.category_id}
-              onChange={handleChange}
-              className={INPUT}
-              required
-            >
-              <option value="">Select Car Type</option>
-              {carCategories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+              <select
+                name="category_id"
+                value={form.category_id}
+                onChange={handleChange}
+                className={INPUT}
+                required
+              >
+                <option value="">Select Category</option>
+                {carCategories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                name="vehicle_type"
+                value={form.vehicle_type}
+                onChange={handleChange}
+                className={INPUT}
+                required
+              >
+                <option value="Car">Car</option>
+                <option value="Bus">Bus</option>
+              </select>
           </div>
 
           <textarea

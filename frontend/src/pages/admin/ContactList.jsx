@@ -12,7 +12,7 @@ const ContactList = () => {
       setLoading(true);
       setError("");
 
-      // ✅ IMPORTANT: full route (because baseURL is http://localhost:1000)
+      // Standardized API call
       const res = await adminApi.get("/admin/contacts");
 
       const list = Array.isArray(res.data) ? res.data : [];

@@ -59,6 +59,7 @@ exports.filterCars = async (req, res) => {
       min_rating,
       available,
       badge, 
+      vehicle_type,
     } = req.query;
 
     let query = `
@@ -114,6 +115,11 @@ exports.filterCars = async (req, res) => {
 if (badge && badge !== "all") {
   query += " AND TRIM(UPPER(IFNULL(c.badge,''))) = TRIM(UPPER(?))";
   params.push(badge);
+}
+
+if (vehicle_type && vehicle_type !== "all") {
+  query += " AND c.vehicle_type = ?";
+  params.push(vehicle_type.toUpperCase());
 }
 
 

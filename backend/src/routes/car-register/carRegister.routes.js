@@ -15,6 +15,12 @@ router.get("/bookings/my", auth, ctrl.getMyBookings);
 router.put("/cars/:id", auth, ctrl.updateCarBothTables);
 router.delete("/cars/:id", auth, ctrl.deleteCarBothTables);
 
-
+/* ===== TOURS ===== */
+const toursCtrl = require("../../controllers/car-register/car-register.tours.controller");
+router.post("/tours", auth, toursCtrl.addTour);
+router.get("/tours", auth, toursCtrl.getMyTours);
+router.get("/tours/:id", auth, toursCtrl.getTour);
+router.put("/tours/:id", auth, toursCtrl.updateTour);
+router.delete("/tours/:id", auth, toursCtrl.deleteTour);
 
 module.exports = router;

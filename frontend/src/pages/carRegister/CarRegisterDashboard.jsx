@@ -52,14 +52,18 @@ const CarRegisterDashboard = () => {
           Loading...
         </div>
       ) : (
-        <div className="grid sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           <StatCard label="Total Cars" value={stats.total_cars} />
           <StatCard label="Approved Cars" value={stats.approved_cars} />
           <StatCard label="Pending Cars" value={stats.pending_cars} />
           <StatCard label="Rejected Cars" value={stats.rejected_cars} />
           <StatCard label="Total Bookings" value={stats.total_bookings} />
           <StatCard label="Total Revenue" value={`₹${stats.total_revenue}`} />
-
+          
+          {/* ✅ NEW TOUR STATS */}
+          <div className="lg:col-span-3 h-px bg-slate-100 my-4"></div>
+          <StatCard label="Tour Packages" value={stats.total_tour_packages} />
+          <StatCard label="Tour Bookings" value={stats.total_tour_bookings} />
         </div>
       )}
     </div>

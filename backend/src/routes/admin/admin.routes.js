@@ -18,6 +18,7 @@ router.use("/cancel-requests", require("./cancelRequest.admin.routes"));
 router.use("/car-requests", require("./adminCarRequestsRoutes"));
 router.use("/car-register-users", require("./admin.carRegisterUsers.routes"));
 router.use("/event-requests", require("./eventRequest.routes")); // ✅ NEW
+router.use("/tours", require("./admin.tours.routes")); // ✅ NEW
 
 
 module.exports = router;

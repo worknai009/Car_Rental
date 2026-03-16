@@ -119,8 +119,8 @@ const Features = () => {
 
         // IMPORTANT:
         // Your backend routes are:
-        // GET http://localhost:1000/cars
-        // GET http://localhost:1000/cars/available
+        // GET /cars
+        // GET /cars/available
         const [carsRes, availableRes] = await Promise.all([
           userApi.get("/cars"),
           userApi.get("/cars/available"),

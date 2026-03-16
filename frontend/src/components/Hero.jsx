@@ -96,6 +96,7 @@ const Hero = () => {
   const [pickupTime, setPickupTime] = useState("");
   const [returnDate, setReturnDate] = useState("");
   const [bookingMode, setBookingMode] = useState("RENTAL");
+  const [vehicleType, setVehicleType] = useState("CAR"); // CAR | BUS
 
   const [pickupCoords, setPickupCoords] = useState({ lat: null, lng: null });
   const [dropCoords, setDropCoords] = useState({ lat: null, lng: null });
@@ -248,29 +249,32 @@ const Hero = () => {
       pickup_lng: pickupCoords.lng,
       drop_lat: dropCoords.lat,
       drop_lng: dropCoords.lng,
+      vehicle_type: vehicleType,
     };
 
     try {
       setSearching(true);
+      // ✅ Save trip in localStorage for other components
       localStorage.setItem("tripSearch", JSON.stringify(trip));
       window.dispatchEvent(new Event("tripSearchUpdated"));
 
+      const targetPath = "/cars";
+      const searchParams = new URLSearchParams({
+        pickup_location: trip.pickup_location,
+        drop_location: trip.drop_location,
+        start_date: trip.start_date,
+        start_time: trip.start_time,
+        end_date: trip.end_date,
+        booking_mode: trip.booking_mode,
+        billing_type: trip.billing_type,
+        pickup_lat: trip.pickup_lat ?? "",
+        pickup_lng: trip.pickup_lng ?? "",
+        drop_lat: trip.drop_lat ?? "",
+        drop_lng: trip.drop_lng ?? "",
+        vehicle_type: "CAR"
+      });
 
-
-      // ✅ Send everything in URL (coords + billing type)
-      navigate(
-        `/cars?pickup_location=${encodeURIComponent(trip.pickup_location)}` +
-        `&drop_location=${encodeURIComponent(trip.drop_location)}` +
-        `&start_date=${encodeURIComponent(trip.start_date)}` +
-        `&start_time=${encodeURIComponent(trip.start_time)}` +
-        `&end_date=${encodeURIComponent(trip.end_date)}` +
-        `&booking_mode=${encodeURIComponent(trip.booking_mode)}` +
-        `&billing_type=${encodeURIComponent(trip.billing_type)}` +
-        `&pickup_lat=${encodeURIComponent(trip.pickup_lat ?? "")}` +
-        `&pickup_lng=${encodeURIComponent(trip.pickup_lng ?? "")}` +
-        `&drop_lat=${encodeURIComponent(trip.drop_lat ?? "")}` +
-        `&drop_lng=${encodeURIComponent(trip.drop_lng ?? "")}`
-      );
+      navigate(`${targetPath}?${searchParams.toString()}`);
     } finally {
       setSearching(false);
     }
@@ -335,7 +339,7 @@ const Hero = () => {
             </div>
 
             <form onSubmit={handleSearch} className="p-6 sm:p-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-5">
                 <div className="reveal-y space-y-2">
                   <label className="text-sm font-bold text-slate-700">Service</label>
                   <select

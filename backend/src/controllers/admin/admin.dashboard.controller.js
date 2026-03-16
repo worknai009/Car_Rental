@@ -31,12 +31,21 @@ exports.dashboard = async (req, res) => {
     const usersRows = await exe(`SELECT COUNT(*) AS total FROM users`);
     const carsRows = await exe(`SELECT COUNT(*) AS total FROM cars`);
 
+    // ✅ TOUR STATS
+    const toursCountRows = await exe(`SELECT COUNT(*) AS total FROM tours_packages`);
+    const tourBookingsCountRows = await exe(`SELECT COUNT(*) AS total FROM tour_bookings`);
+    const pendingToursCountRows = await exe(`SELECT COUNT(*) AS total FROM tours_packages WHERE status = 'PENDING'`);
+
     res.json({
       totalRevenue: revenueRows[0]?.total || 0,
       bookingCount: bookingsRows[0]?.total || 0,
       activeClients: usersRows[0]?.total || 0,
       fleetMileage: carsRows[0]?.total || 0, 
-      carRegisterUsers: carRegisterUsersRows[0]?.total || 0
+      carRegisterUsers: carRegisterUsersRows[0]?.total || 0,
+      // TOUR STATS
+      totalTours: toursCountRows[0]?.total || 0,
+      tourBookings: tourBookingsCountRows[0]?.total || 0,
+      pendingTours: pendingToursCountRows[0]?.total || 0
     });
   } catch (err) {
     console.error("DASHBOARD ERROR:", err);

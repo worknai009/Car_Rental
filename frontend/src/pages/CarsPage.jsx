@@ -48,6 +48,7 @@ const CarsPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedLocation, setSelectedLocation] = useState("all"); // CITY
   const [selectedBadge, setSelectedBadge] = useState("all"); // PLATINUM | GOLD | SILVER
+  const [selectedVehicleType, setSelectedVehicleType] = useState("all"); // Car | Bus
 
   const [selectedFuel, setSelectedFuel] = useState("all");
   const [selectedSeats, setSelectedSeats] = useState("all");
@@ -186,7 +187,7 @@ const CarsPage = () => {
   const fetchAllCars = async () => {
     try {
       setLoading(true);
-      const res = await userApi.get("/cars");
+      const res = await userApi.get("/cars/filter", { params: { vehicle_type: 'CAR' } });
       const list = Array.isArray(res.data) ? res.data : [];
 
       const normalized = list.map((c) => ({
@@ -217,6 +218,7 @@ const CarsPage = () => {
         selectedFuel !== "all" ||
         selectedSeats !== "all" ||
         selectedBadge !== "all" ||
+        selectedVehicleType !== "all" ||
         minPrice !== "" ||
         maxPrice !== "";
 
@@ -225,11 +227,12 @@ const CarsPage = () => {
         return;
       }
 
-      const params = {};
+      const params = { vehicle_type: 'CAR' };
       if (selectedLocation !== "all") params.city = selectedLocation;
       if (selectedFuel !== "all") params.fuel_type = selectedFuel;
       if (selectedSeats !== "all") params.seats = selectedSeats;
       if (selectedBadge !== "all") params.badge = selectedBadge;
+      if (selectedVehicleType !== "all") params.vehicle_type = selectedVehicleType;
       if (minPrice !== "") params.min_price = minPrice;
       if (maxPrice !== "") params.max_price = maxPrice;
 
@@ -260,7 +263,7 @@ const CarsPage = () => {
   useEffect(() => {
     fetchFilteredCars();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedLocation, selectedFuel, selectedSeats, selectedBadge, minPrice, maxPrice]);
+  }, [selectedLocation, selectedFuel, selectedSeats, selectedBadge, selectedVehicleType, minPrice, maxPrice]);
 
   // -------------------------
   // Scroll animations
@@ -297,6 +300,11 @@ const CarsPage = () => {
   const seatsOptions = useMemo(() => {
     const set = new Set(allCarsForOptions.map((c) => c.seats).filter(Boolean));
     return Array.from(set).sort((a, b) => Number(a) - Number(b));
+  }, [allCarsForOptions]);
+
+  const vehicleTypes = useMemo(() => {
+    const set = new Set(allCarsForOptions.map((c) => c.vehicle_type).filter(Boolean));
+    return Array.from(set);
   }, [allCarsForOptions]);
 
   // -------------------------
@@ -349,6 +357,7 @@ const CarsPage = () => {
     setSelectedFuel("all");
     setSelectedSeats("all");
     setSelectedBadge("all");
+    setSelectedVehicleType("all");
     setMinPrice("");
     setMaxPrice("");
     setSortBy("featured");
@@ -359,6 +368,7 @@ const CarsPage = () => {
     selectedFuel !== "all",
     selectedSeats !== "all",
     selectedBadge !== "all",
+    selectedVehicleType !== "all",
     minPrice !== "" || maxPrice !== "",
   ].filter(Boolean).length;
 
@@ -502,7 +512,10 @@ const CarsPage = () => {
             </div>
 
             {/* FILTER GRID */}
-            <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 ${showFilters ? "grid" : "hidden"} lg:grid`}>
+            <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-4 ${showFilters ? "grid" : "hidden"} lg:grid`}>
+              {/* Vehicle Type */}
+              {/* Vehicle Type Filter (Hidden strictly for cars) */}
+
               {/* Badge */}
               <div className="lg:col-span-1">
                 <label className="block text-sm font-bold text-gray-700 mb-2">Car Type</label>

@@ -3,6 +3,16 @@ const express = require("express");
 const cors = require("cors");
 const fileUpload = require("express-fileupload");
 const path = require("path");
+const { sequelize } = require("./src/config/db");
+const models = require("./src/models/index");
+
+// SYNC DATABASE
+sequelize.sync({ alter: false }).then(() => {
+  console.log("Database synced (Sequelize) ✅");
+}).catch(err => {
+  console.error("Database sync error (Sequelize):", err.message);
+});
+
 
 const user_routes = require("./src/routes/user/index");
 const admin_routes = require("./src/routes/admin/admin.routes");

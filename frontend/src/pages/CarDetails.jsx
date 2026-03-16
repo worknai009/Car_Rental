@@ -240,7 +240,7 @@ const CarDetails = () => {
                   <div>
                     <h1 className="text-3xl font-black text-gray-900">{car.name}</h1>
                     <p className="text-gray-600 mt-1">
-                      {car.brand} • {car.category_name || "Category"}
+                      {car.brand} • {car.category_name || "Category"} • {car.vehicle_type || "Car"}
                     </p>
                   </div>
 

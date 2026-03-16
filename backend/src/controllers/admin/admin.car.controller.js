@@ -39,19 +39,21 @@ exports.createCar = async (req, res) => {
       fuel_type,
       rating,
       badge,
+      vehicle_type,
     } = req.body;
 
     // ✅ insert
     await exe(
       `INSERT INTO cars 
-      (name, brand, car_details, cars_image, category_id, price_per_day, price_per_km, is_available, city, year, seats, fuel_type, rating, badge, is_active, created_at)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,NOW())`,
+      (name, brand, car_details, cars_image, category_id, vehicle_type, price_per_day, price_per_km, is_available, city, year, seats, fuel_type, rating, badge, is_active, created_at)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,NOW())`,
       [
         name,
         brand,
         car_details || "",
         fileName,
         Number(category_id),
+        vehicle_type || "CAR",
         Number(price_per_day),
         Number(price_per_km),
         Number(is_available ?? 1),
@@ -135,6 +137,7 @@ exports.updateCar = async (req, res) => {
       fuel_type,
       rating,
       badge,
+      vehicle_type,
     } = req.body;
 
     await exe(
@@ -152,7 +155,8 @@ exports.updateCar = async (req, res) => {
         seats=?,
         fuel_type=?,
         rating=?,
-        badge=?
+        badge=?,
+        vehicle_type=?
       WHERE id=?`,
       [
         name,
@@ -169,6 +173,7 @@ exports.updateCar = async (req, res) => {
         fuel_type || "",
         rating || null,
         badge || "",
+        vehicle_type || "CAR",
         id,
       ]
     );

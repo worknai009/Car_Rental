@@ -84,6 +84,7 @@ const CarList = () => {
               <th className="text-left p-3">Name</th>
               <th className="text-left p-3">Brand</th>
               <th className="text-left p-3">Category</th>
+              <th className="text-left p-3">Type</th>
               <th className="text-left p-3">Price/Day</th>
               <th className="text-left p-3">Available</th>
               <th className="text-left p-3">Action</th>
@@ -113,6 +114,13 @@ const CarList = () => {
                   <td className="p-3 font-semibold">{c.name}</td>
                   <td className="p-3">{c.brand}</td>
                   <td className="p-3">{c.category_name || "-"}</td>
+                  <td className="p-3">
+                    <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                      c.vehicle_type === 'BUS' ? 'bg-amber-100 text-amber-700' : 'bg-cyan-100 text-cyan-700'
+                    }`}>
+                      {c.vehicle_type || 'CAR'}
+                    </span>
+                  </td>
                   <td className="p-3">₹{c.price_per_day}</td>
 
                   <td className="p-3">
