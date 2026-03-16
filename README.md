@@ -153,19 +153,6 @@ cd backend
 npm install
 ```
 
-Create a `.env` file in `backend/`:
-```env
-# Server
-PORT=1000
-NODE_ENV=development
-
-# Database (MySQL)
-DB_HOST=localhost
-DB_USER=root
-DB_PASSWORD=your_password
-DB_NAME=car_rental_system_node
-DB_PORT=3306
-
 # JWT
 JWT_SECRET=your_strong_secret_key_here
 JWT_EXPIRE=1d
@@ -193,11 +180,7 @@ cd frontend
 npm install
 ```
 
-Create a `.env` file in `frontend/`:
-```env
-VITE_API_URL=http://localhost:1000/api
-VITE_GOOGLE_MAPS_KEY=your_google_maps_api_key
-```
+
 
 Start the frontend:
 ```bash
