@@ -29,7 +29,7 @@ services:
       - JWT_SECRET=${JWT_SECRET:-car_rental_secret_key_123}
       - JWT_EXPIRE=${JWT_EXPIRE:-24h}
       - MAIN_PORT=${MAIN_PORT:-1000}
-      - CLIENT_URL=${CLIENT_URL:-http://aitourism.in,http://admin.aitourism.in}
+      - CLIENT_URL=${CLIENT_URL:-https://aitourism.in,https://admin.aitourism.in}
     depends_on:
       - db
     volumes:
@@ -61,7 +61,7 @@ services:
       - JWT_SECRET=${JWT_SECRET:-car_rental_secret_key_123}
       - JWT_EXPIRE=${JWT_EXPIRE:-24h}
       - ADMIN_PORT=${ADMIN_PORT:-1001}
-      - CLIENT_URL=${CLIENT_URL:-http://aitourism.in,http://admin.aitourism.in}
+      - CLIENT_URL=${CLIENT_URL:-https://aitourism.in,https://admin.aitourism.in}
     depends_on:
       - db
     volumes:
@@ -86,13 +86,27 @@ services:
     restart: always
     ports:
       - "80:80"
+      - "443:443"
     volumes:
       - ./gateway.nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
     depends_on:
       - frontend
       - admin-frontend
       - backend
       - admin-backend
+    networks:
+      - car-rental-network
+
+  # SSL CERTBOT
+  certbot:
+    image: certbot/certbot
+    container_name: car-rental-certbot
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
     networks:
       - car-rental-network
 
