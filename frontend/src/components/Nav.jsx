@@ -33,9 +33,9 @@ const Nav = () => {
 
   // ✅ Change paths if your app uses different routes
   const loginOptions = [
-    { name: "User Login", path: "/login" },
-    { name: "Admin Login", path: "/admin/login" },
-    { name: "Car Register Login", path: "/car-register/login" },
+    { name: "User Login", path: "/login", isExternal: false },
+    { name: "Admin Login", path: "https://admin.aitourism.in", isExternal: true },
+    { name: "Car Register Login", path: "/car-register/login", isExternal: false },
   ];
 
   // Close dropdown when clicking outside
@@ -144,16 +144,26 @@ const Nav = () => {
                 {isLoginOpen && (
                   <div className="absolute right-0 mt-3 w-56 rounded-2xl bg-white/90 backdrop-blur-xl shadow-2xl border border-gray-200/60 overflow-hidden z-50">
                     <div className="p-2">
-                      {loginOptions.map((opt) => (
-                        <Link
-                          key={opt.name}
-                          to={opt.path}
-                          onClick={() => setIsLoginOpen(false)}
-                          className="flex items-center px-4 py-3 rounded-xl text-gray-700 font-semibold hover:bg-cyan-50 hover:text-cyan-700 transition-all"
-                        >
-                          {opt.name}
-                        </Link>
-                      ))}
+                      {loginOptions.map((opt) => 
+                        opt.isExternal ? (
+                          <a
+                            key={opt.name}
+                            href={opt.path}
+                            className="flex items-center px-4 py-3 rounded-xl text-gray-700 font-semibold hover:bg-cyan-50 hover:text-cyan-700 transition-all"
+                          >
+                            {opt.name}
+                          </a>
+                        ) : (
+                          <Link
+                            key={opt.name}
+                            to={opt.path}
+                            onClick={() => setIsLoginOpen(false)}
+                            className="flex items-center px-4 py-3 rounded-xl text-gray-700 font-semibold hover:bg-cyan-50 hover:text-cyan-700 transition-all"
+                          >
+                            {opt.name}
+                          </Link>
+                        )
+                      )}
                     </div>
                   </div>
                 )}
@@ -230,22 +240,38 @@ const Nav = () => {
 
           {/* ✅ Mobile Login Options */}
           <div className="mt-8 space-y-3">
-            {loginOptions.map((opt, i) => (
-              <Link
-                key={opt.name}
-                to={opt.path}
-                onClick={() => setIsMenuOpen(false)}
-                className="flex items-center justify-center gap-2 px-6 py-4 rounded-2xl bg-white border-2 border-gray-300 text-gray-700 font-semibold hover:border-cyan-400 hover:text-cyan-600 transition-all duration-300"
-                style={{
-                  animation: isMenuOpen
-                    ? `slideInRight 0.4s ease-out ${0.4 + i * 0.1}s both`
-                    : "none",
-                }}
-              >
-                <LogIn className="h-5 w-5" />
-                {opt.name}
-              </Link>
-            ))}
+            {loginOptions.map((opt, i) => 
+              opt.isExternal ? (
+                <a
+                  key={opt.name}
+                  href={opt.path}
+                  className="flex items-center justify-center gap-2 px-6 py-4 rounded-2xl bg-white border-2 border-gray-300 text-gray-700 font-semibold hover:border-cyan-400 hover:text-cyan-600 transition-all duration-300"
+                  style={{
+                    animation: isMenuOpen
+                      ? `slideInRight 0.4s ease-out ${0.4 + i * 0.1}s both`
+                      : "none",
+                  }}
+                >
+                  <LogIn className="h-5 w-5" />
+                  {opt.name}
+                </a>
+              ) : (
+                <Link
+                  key={opt.name}
+                  to={opt.path}
+                  onClick={() => setIsMenuOpen(false)}
+                  className="flex items-center justify-center gap-2 px-6 py-4 rounded-2xl bg-white border-2 border-gray-300 text-gray-700 font-semibold hover:border-cyan-400 hover:text-cyan-600 transition-all duration-300"
+                  style={{
+                    animation: isMenuOpen
+                      ? `slideInRight 0.4s ease-out ${0.4 + i * 0.1}s both`
+                      : "none",
+                  }}
+                >
+                  <LogIn className="h-5 w-5" />
+                  {opt.name}
+                </Link>
+              )
+            )}
 
             {/* Mobile Register */}
             <Link
