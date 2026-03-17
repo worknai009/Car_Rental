@@ -17,9 +17,7 @@ services:
 
   # MAIN WEBSITE BACKEND
   backend:
-    build: 
-      context: ./backend
-    image: car-rental-backend:latest
+    image: worknai009/car-rental-backend:latest
     container_name: car-rental-backend
     restart: always
     environment:
@@ -35,18 +33,13 @@ services:
     depends_on:
       - db
     volumes:
-      - ./backend/public/uploads:/app/public/uploads
+      - ./uploads:/app/public/uploads
     networks:
       - car-rental-network
 
   # MAIN WEBSITE FRONTEND
   frontend:
-    build:
-      context: ./frontend
-      args:
-        - VITE_MAIN_API_URL=http://aitourism.in/api
-        - VITE_GOOGLE_MAPS_KEY=${VITE_GOOGLE_MAPS_KEY}
-    image: car-rental-frontend:latest
+    image: worknai009/car-rental-frontend:latest
     container_name: car-rental-frontend
     restart: always
     depends_on:
@@ -56,9 +49,7 @@ services:
 
   # ADMIN PANEL BACKEND
   admin-backend:
-    build:
-      context: ./Admin/backend
-    image: car-rental-admin-backend:latest
+    image: worknai009/car-rental-admin-backend:latest
     container_name: car-rental-admin-backend
     restart: always
     environment:
@@ -74,18 +65,13 @@ services:
     depends_on:
       - db
     volumes:
-      - ./backend/public/uploads:/app/public/uploads
+      - ./uploads:/app/public/uploads
     networks:
       - car-rental-network
 
   # ADMIN PANEL FRONTEND
   admin-frontend:
-    build:
-      context: ./Admin/frontend
-      args:
-        - VITE_ADMIN_API_URL=http://admin.aitourism.in/api/admin
-        - VITE_GOOGLE_MAPS_KEY=${VITE_GOOGLE_MAPS_KEY}
-    image: car-rental-admin-frontend:latest
+    image: worknai009/car-rental-admin-frontend:latest
     container_name: car-rental-admin-frontend
     restart: always
     depends_on:
