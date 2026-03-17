@@ -1,0 +1,69 @@
+# Default block to reject direct IP access
+server {
+    listen 80 default_server;
+    server_name _;
+    return 403;
+}
+
+# Main Website (aitourism.in)
+server {
+    listen 80;
+    server_name aitourism.in www.aitourism.in;
+
+    # Certbot challenge path
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    # Main Website Frontend
+    location / {
+        proxy_pass http://frontend:80;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Main Website Backend API
+    location /api/ {
+        proxy_pass http://backend:1000/api/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Public static files (Uploads)
+    location /api/public/ {
+        proxy_pass http://backend:1000/api/public/;
+    }
+}
+
+# Admin Panel (admin.aitourism.in)
+server {
+    listen 80;
+    server_name admin.aitourism.in;
+
+    # Certbot challenge path
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    # Admin Panel Frontend
+    location / {
+        proxy_pass http://admin-frontend:80;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Admin Panel Backend API
+    location /api/admin/ {
+        proxy_pass http://admin-backend:1001/api/admin/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
