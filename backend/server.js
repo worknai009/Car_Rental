@@ -1,23 +1,24 @@
-require("dotenv").config({ path: require("path").join(__dirname, ".env") });
+const path = require("path");
+require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
+const cookieParser = require("cookie-parser");
 const fileUpload = require("express-fileupload");
-const path = require("path");
 const rateLimit = require("express-rate-limit");
+const logger = require("./src/utils/logger");
 const { sequelize } = require("./src/config/db");
 const models = require("./src/models/index");
 
 // SYNC DATABASE
 sequelize.sync({ alter: false }).then(() => {
-  console.log("Database synced (Sequelize) ✅");
+  logger.info("Database synced (Sequelize) ✅");
 }).catch(err => {
-  console.error("Database sync error (Sequelize):", err.message);
+  logger.error("Database sync error (Sequelize): " + err.message);
 });
 
 
 const user_routes = require("./src/routes/user/index");
-const admin_routes = require("./src/routes/admin/admin.routes");
 const car_register = require("./src/routes/car-register/index");
 
 const app = express();
@@ -26,6 +27,8 @@ const app = express();
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }, // Allow cross-origin images
 }));
+
+app.use(cookieParser());
 
 app.use(
   cors({
@@ -82,10 +85,9 @@ app.use("/api/contact", contactLimiter);
 
 // ROUTES
 app.use("/api/", user_routes);
-app.use("/api/admin", admin_routes);
 app.use("/api/car-register", car_register);
 
-const PORT = process.env.PORT || 1000;
+const PORT = process.env.MAIN_PORT || process.env.PORT || 1000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });

@@ -1,6 +1,8 @@
 const path = require("path");
 const fs = require("fs");
 const { exe } = require("../../config/db");
+const logger = require("../../utils/logger");
+const { deleteFile } = require("../../utils/fileHelper");
 
 
 
@@ -447,7 +449,20 @@ exports.updateCarBothTables = async (req, res) => {
       );
     }
 
-    // ✅ remove old files if replaced (optional)
+    // ✅ remove old files if replaced
+    const oldFiles = await exe(
+      "SELECT cars_image, rc_book, insurance_copy, puc_certificate, id_proof FROM car_registration_requests WHERE id=? AND car_user_id=?",
+      [id, carUserId]
+    );
+
+    if (oldFiles.length > 0) {
+      const old = oldFiles[0];
+      if (newCarsImage && old.cars_image) await deleteFile("public/" + old.cars_image);
+      if (newRcBook && old.rc_book) await deleteFile("public/" + old.rc_book);
+      if (newInsurance && old.insurance_copy) await deleteFile("public/" + old.insurance_copy);
+      if (newPuc && old.puc_certificate) await deleteFile("public/" + old.puc_certificate);
+      if (newIdProof && old.id_proof) await deleteFile("public/" + old.id_proof);
+    }
     if (newCarsImage && oldReq.cars_image && oldReq.cars_image !== newCarsImage) unlinkIfExists(oldReq.cars_image);
     if (newRcBook && oldReq.rc_book && oldReq.rc_book !== newRcBook) unlinkIfExists(oldReq.rc_book);
     if (newInsurance && oldReq.insurance_copy && oldReq.insurance_copy !== newInsurance) unlinkIfExists(oldReq.insurance_copy);

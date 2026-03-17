@@ -7,6 +7,6 @@ const carRegisterAuth = require("../../middleware/carRegisterAuth.middleware");
 router.post("/register", controller.register);
 router.post("/login", controller.login);
 router.get("/me", carRegisterAuth, controller.me);
-
+router.get("/logout", controller.logout);
 
 module.exports = router;

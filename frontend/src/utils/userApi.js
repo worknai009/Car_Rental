@@ -1,24 +1,16 @@
 import axios from "axios";
 
 const userApi = axios.create({
-  // baseURL: import.meta.env.VITE_API_URL, // ✅ because app.use("/", user_routes)
-
-  baseURL: import.meta.env.VITE_API_URL,
+  baseURL: import.meta.env.VITE_MAIN_API_URL,
+  withCredentials: true, // ✅ IMPORTANT: required for cookies
 });
 
-// ✅ attach user token automatically
-userApi.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token"); // ✅ user token key
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
-
-// ✅ auto logout if token invalid/expired
+// ✅ Interceptor to handle errors globally
 userApi.interceptors.response.use(
   (res) => res,
   (err) => {
     if (err?.response?.status === 401) {
-      localStorage.removeItem("token");
+      // Local session cleanup (UI only)
       localStorage.removeItem("user");
       window.location.href = "/login";
     }

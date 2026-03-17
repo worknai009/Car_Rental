@@ -8,8 +8,10 @@ COPY package*.json ./
 RUN npm install
 
 # Pass build arguments (e.g., API URL)
-ARG VITE_API_URL
-ENV VITE_API_URL=$VITE_API_URL
+ARG VITE_MAIN_API_URL
+ARG VITE_GOOGLE_MAPS_KEY
+ENV VITE_MAIN_API_URL=$VITE_MAIN_API_URL
+ENV VITE_GOOGLE_MAPS_KEY=$VITE_GOOGLE_MAPS_KEY
 
 # Copy application files and build
 COPY . .

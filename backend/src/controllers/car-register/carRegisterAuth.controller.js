@@ -1,12 +1,6 @@
 const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
-const { exe } = require("../../config/db"); // ✅ IMPORTANT: use exe
-
-function signToken(payload) {
-  return jwt.sign(payload, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES_IN || "30m",
-  });
-}
+const { exe } = require("../../config/db"); 
+const jwtUtils = require("../../utils/jwt");
 
 // POST /api/car-register/auth/register
 exports.register = async (req, res) => {
@@ -97,24 +91,16 @@ exports.login = async (req, res) => {
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
-    const token = signToken({
-      id: userRow.id,
-      email: userRow.email,
-      role: userRow.role,
-    });
-
-    const user = {
+    const payload = {
       id: userRow.id,
       name: userRow.name,
       phone: userRow.phone,
       email: userRow.email,
       role: userRow.role,
       status: userRow.status,
-      created_at: userRow.created_at,
-      updated_at: userRow.updated_at,
     };
 
-    return res.json({ message: "Login successful", token, user });
+    return jwtUtils.sendTokenResponse(payload, 200, res);
   } catch (err) {
     console.error("car-register login error:", err);
     return res.status(500).json({ message: "Server error" });
@@ -144,4 +130,12 @@ exports.me = async (req, res) => {
     console.error("car-register me error:", err);
     return res.status(500).json({ message: "Server error" });
   }
+};
+exports.logout = (req, res) => {
+  res.cookie("token", "none", {
+    expires: new Date(Date.now() + 10 * 1000),
+    httpOnly: true,
+  });
+
+  res.status(200).json({ success: true, message: "Car owner logged out successfully" });
 };

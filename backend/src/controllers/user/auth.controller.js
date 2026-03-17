@@ -152,25 +152,26 @@ exports.verifyOtp = async (req, res) => {
       [user.id]
     );
 
-    // 🔑 JWT token
-    const token = jwtUtils.signToken({
+    // 🔑 JWT token via Cookie
+    const payload = {
       id: user.id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
       role: user.role,
-    });
+    };
 
-    return res.json({
-      message: "Login successful",
-      token,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        role: user.role,
-      },
-    });
+    return jwtUtils.sendTokenResponse(payload, 200, res);
   } catch (err) {
     console.error("Verify OTP error:", err);
     return res.status(500).json({ message: "OTP verification failed" });
   }
+};
+exports.logout = (req, res) => {
+  res.cookie("token", "none", {
+    expires: new Date(Date.now() + 10 * 1000),
+    httpOnly: true,
+  });
+
+  res.status(200).json({ success: true, message: "Logged out successfully" });
 };

@@ -3,7 +3,6 @@ import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 
 // LAYOUTS
 import Layout from "./components/Layout";
-import AdminLayout from "./components/AdminLayout";
 
 // PUBLIC PAGES
 import Home from "./components/Home";
@@ -11,7 +10,6 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import CarsPage from "./pages/CarsPage";
 import About from "./pages/About";
-// Removed BusesPage
 import Contact from "./pages/Contact";
 import ReviewBooking from "./pages/ReviewBooking";
 import MyBookings from "./pages/MyBookings";
@@ -22,42 +20,6 @@ import EventsPage from "./pages/EventsPage";
 import ToursPage from "./pages/ToursPage";
 import TourDetails from "./pages/TourDetails";
 import TourBookingsUser from "./pages/TourBookingsUser";
-
-
-// ADMIN PAGES
-import AdminLogin from "./pages/admin/AdminLogin";
-import Dashboard from "./pages/admin/Dashboard";
-import Team from "./pages/admin/Team";
-import Invoices from "./pages/admin/Invoices";
-import Calendar from "./pages/admin/Calendar";
-import AdminRegister from "./pages/admin/AdminRegister";
-import CategoryList from "./pages/admin/CategoryList";
-import AddCategory from "./pages/admin/AddCategory";
-import EditCar from "./pages/admin/EditCar";
-import ContactList from "./pages/admin/ContactList";
-import CancelRequests from "./pages/admin/CancelRequests";
-import FeedbackList from "./pages/admin/FeedbackList.jsx";
-import CarRegisterRequests from "./pages/admin/CarRegisterRequests.jsx";
-import CarRegisterUsers from "./pages/admin/CarRegisterUsers.jsx"
-import EventRequests from "./pages/admin/EventRequests";
-import ToursList from "./pages/admin/ToursList";
-import AddTour from "./pages/admin/AddTour";
-import TourBookingsAdmin from "./pages/admin/TourBookingsAdmin";
-import TourDetailsAdmin from "./pages/admin/TourDetailsAdmin";
-
-
-
-// ADMIN – CAR MANAGEMENT
-import AddCar from "./pages/admin/AddCar";
-import CarList from "./pages/admin/CarList";
-import BookingList from "./pages/admin/BookingList";
-
-// CHART PAGES
-import Bar from "./pages/admin/charts/Bar";
-import Geography from "./pages/admin/charts/Geography";
-import Line from "./pages/admin/charts/Line";
-import Pie from "./pages/admin/charts/Pie";
-
 
 // ✅ Car Register Panel
 import { CarRegisterAuthProvider } from "./components/carRegister/CarRegisterAuthContext.jsx";
@@ -74,14 +36,6 @@ import CarRegisterProfile from "./pages/carRegister/CarRegisterProfile.jsx";
 import CarRegisterTours from "./pages/carRegister/CarRegisterTours.jsx";
 import CarRegisterAddTour from "./pages/carRegister/CarRegisterAddTour.jsx";
 import TourDetailsPartner from "./pages/carRegister/TourDetailsPartner.jsx";
-
-
-
-// ✅ Admin Protect
-const AdminPrivateRoute = ({ children }) => {
-  const token = localStorage.getItem("adminToken");
-  return token ? children : <Navigate to="/admin/login" replace />;
-};
 
 // ✅ User Protect (redirect back after login)
 const UserPrivateRoute = ({ children }) => {
@@ -101,12 +55,9 @@ const App = () => {
       {/* ================= PUBLIC ROUTES ================= */}
       <Route element={<Layout />}>
         <Route path="/" element={<Home />} />
-
-        {/* ✅ PUBLIC */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/cars" element={<CarsPage />} />
-        {/* Removed /buses route */}
         <Route path="/events" element={<EventsPage />} />
         <Route path="/cars/:id" element={<CarDetails />} />
         <Route path="/review-booking"  element={  <UserPrivateRoute>  <ReviewBooking />  </UserPrivateRoute>  }  />
@@ -120,49 +71,12 @@ const App = () => {
         <Route path="/reset-password" element={<ResetPassword />} />
       </Route>
 
-      {/* ================= ADMIN LOGIN ================= */}
-      <Route path="/admin/login" element={<AdminLogin />} />
-      <Route path="/admin/register" element={<AdminRegister />} />
-
-      {/* ================= ADMIN ROUTES ================= */}
-      <Route  path="/admin"  element={  <AdminPrivateRoute>  <AdminLayout />  </AdminPrivateRoute> } >
-        <Route index element={<Navigate to="dashboard" replace />} />
-        <Route path="dashboard" element={<Dashboard />} />
-        <Route path="team" element={<Team />} />
-        <Route path="invoices" element={<Invoices />} />
-        <Route path="calendar" element={<Calendar />} />
-        <Route path="categories/add" element={<AddCategory />} />
-        <Route path="categories" element={<CategoryList />} />
-        <Route path="cars/add" element={<AddCar />} />
-        <Route path="cars" element={<CarList />} />
-        <Route path="bookings" element={<BookingList />} />
-        <Route path="cars/edit/:id" element={<EditCar />} />
-        <Route path="bar" element={<Bar />} />
-        <Route path="geography" element={<Geography />} />
-        <Route path="line" element={<Line />} />
-        <Route path="pie" element={<Pie />} />
-        <Route path="contacts" element={<ContactList />} />
-        <Route path="/admin/cancel-requests" element={<CancelRequests />} />
-        <Route path="feedback" element={<FeedbackList />} />
-        <Route path="car-register-requests" element={<CarRegisterRequests />} />
-        <Route path="car-register-users" element={<CarRegisterUsers />} />
-        <Route path="event-requests" element={<EventRequests />} />
-        <Route path="tours" element={<ToursList />} />
-        <Route path="tours/:id" element={<TourDetailsAdmin />} />
-        <Route path="tours/add" element={<AddTour />} />
-        <Route path="tours/edit/:id" element={<AddTour />} />
-        <Route path="tour-bookings" element={<TourBookingsAdmin />} />
-      </Route>
-
-
       {/* ✅ Car Register Auth (public) */}
       <Route path="/car-register/login" element={  <CarRegisterAuthProvider>  <CarRegisterLogin /> </CarRegisterAuthProvider>}/>
-
       <Route path="/car-register/register" element={ <CarRegisterAuthProvider>  <CarRegisterRegister /> </CarRegisterAuthProvider> } />
 
       {/* ✅ Car Register Panel (protected) */}
       <Route element={ <CarRegisterAuthProvider> <CarRegisterProtectedRoute />  </CarRegisterAuthProvider>}>
-
         <Route path="/car-register" element={<CarRegisterLayout />}>
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<CarRegisterDashboard />} />
@@ -177,12 +91,7 @@ const App = () => {
         </Route>
       </Route>
 
-
-
-
       {/* ================= 404 ================= */}
-
-
       <Route
         path="*"
         element={
