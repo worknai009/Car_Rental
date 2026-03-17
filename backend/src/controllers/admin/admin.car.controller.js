@@ -13,6 +13,12 @@ exports.createCar = async (req, res) => {
     }
 
     const img = req.files.cars_image;
+    
+    // ✅ SECURITY: File Type Validation
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+    if (!allowedTypes.includes(img.mimetype)) {
+      return res.status(400).json({ message: "Invalid image type. Only JPG, PNG and WEBP are allowed." });
+    }
 
     // ✅ ensure public folder exists
     const publicDir = path.join(process.cwd(), "public");
@@ -116,7 +122,14 @@ exports.updateCar = async (req, res) => {
     let imageName = null;
     if (req.files?.cars_image) {
       const image = req.files.cars_image;
-      imageName = Date.now() + "_" + image.name;
+
+      // ✅ SECURITY: File Type Check during update
+      const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+      if (!allowedTypes.includes(image.mimetype)) {
+        return res.status(400).json({ message: "Invalid image type." });
+      }
+
+      imageName = Date.now() + "_" + image.name.replace(/\s+/g, "");
       await image.mv("public/" + imageName);
     } else {
       const old = await exe("SELECT cars_image FROM cars WHERE id=?", [id]);

@@ -1,8 +1,10 @@
 require("dotenv").config({ path: require("path").join(__dirname, ".env") });
 const express = require("express");
 const cors = require("cors");
+const helmet = require("helmet");
 const fileUpload = require("express-fileupload");
 const path = require("path");
+const rateLimit = require("express-rate-limit");
 const { sequelize } = require("./src/config/db");
 const models = require("./src/models/index");
 
@@ -19,6 +21,11 @@ const admin_routes = require("./src/routes/admin/admin.routes");
 const car_register = require("./src/routes/car-register/index");
 
 const app = express();
+
+// --- SECURITY: BASE PROTECTION ---
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }, // Allow cross-origin images
+}));
 
 app.use(
   cors({
@@ -41,6 +48,37 @@ app.use(
 
 app.use("/api/public", express.static("public"));
 app.use("/api/uploads", express.static(path.join(__dirname, "public", "uploads")));
+
+// --- SECURITY: RATE LIMITING ---
+// 1. General limiter for all API routes (100 per 15 mins)
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  message: { message: "Too many requests, please try again later" },
+  standardHeaders: true, 
+  legacyHeaders: false,
+});
+app.use("/api/", apiLimiter);
+
+// 2. Stricter limiter for Auth (10 per 15 mins to prevent brute-force)
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { message: "Too many attempts, please try again after 15 minutes" },
+});
+app.use("/api/auth/login", authLimiter);
+app.use("/api/auth/register", authLimiter);
+app.use("/api/auth/verify-otp", authLimiter);
+app.use("/api/auth/forgot-password", authLimiter);
+app.use("/api/auth/reset-password", authLimiter);
+
+// 3. Very strict limiter for Contact (3 per hour to stop spam bots)
+const contactLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, 
+  max: 3, 
+  message: { message: "Message limit reached. Please try again after an hour." },
+});
+app.use("/api/contact", contactLimiter);
 
 // ROUTES
 app.use("/api/", user_routes);

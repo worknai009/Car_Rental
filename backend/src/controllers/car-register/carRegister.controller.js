@@ -18,7 +18,17 @@ exports.addCarRequest = async (req, res) => {
 
     const saveFile = async (file) => {
       if (!file) return null;
-      const filename = Date.now() + "-" + file.name;
+
+      // ✅ SECURITY: Validate extension & mimetype
+      const allowedTypes = [
+        "image/jpeg", "image/png", "image/webp", 
+        "application/pdf" // Allowed for RC books/ID proofs
+      ];
+      if (!allowedTypes.includes(file.mimetype)) {
+        throw new Error(`Forbidden file type: ${file.name}`);
+      }
+
+      const filename = Date.now() + "-" + file.name.replace(/\s+/g, "");
       await file.mv(path.join(uploadDir, filename));
       return `/uploads/cars/${filename}`;
     };

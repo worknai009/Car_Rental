@@ -64,6 +64,12 @@ exports.getAllUsers = async (req, res) => {
 exports.getProfile = async (req, res) => {
   try {
     const { id } = req.params;
+    const authUserId = req.user?.id;
+
+    // ✅ IDOR FIX: Users can only view their own profile
+    if (!authUserId || Number(id) !== Number(authUserId)) {
+      return res.status(403).json({ message: "Forbidden: You can only view your own profile" });
+    }
 
     const data = await exe(
       "SELECT id,name,email,created_at FROM users WHERE id=?",
@@ -85,6 +91,13 @@ exports.getProfile = async (req, res) => {
 exports.updateProfile = async (req, res) => {
   try {
     const { id } = req.params;
+    const authUserId = req.user?.id;
+
+    // ✅ IDOR FIX: Users can only update their own profile
+    if (!authUserId || Number(id) !== Number(authUserId)) {
+      return res.status(403).json({ message: "Forbidden: You can only update your own profile" });
+    }
+
     const { name, email } = req.body;
 
     await exe(

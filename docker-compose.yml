@@ -1,0 +1,56 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: car-rental-db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root_password}
+      MYSQL_DATABASE: ${DB_NAME:-car_rental}
+      MYSQL_USER: ${DB_USER:-car_user}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-car_password}
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - car-rental-network
+
+  backend:
+    image: car-rental-backend:latest
+    container_name: car-rental-backend
+    restart: always
+    environment:
+      - DB_HOST=db
+      - DB_USER=${DB_USER:-car_user}
+      - DB_PASSWORD=${DB_PASSWORD:-car_password}
+      - DB_NAME=${DB_NAME:-car_rental}
+      - DB_PORT=3306
+      - JWT_SECRET=${JWT_SECRET:-your_long_random_jwt_secret_key}
+      - JWT_EXPIRE=24h
+      - PORT=1000
+    depends_on:
+      - db
+    ports:
+      - "1000:1000"
+    volumes:
+      - ./backend/public/uploads:/app/public/uploads
+    networks:
+      - car-rental-network
+
+  frontend:
+    image: car-rental-frontend:latest
+    container_name: car-rental-frontend
+    restart: always
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+    networks:
+      - car-rental-network
+
+networks:
+  car-rental-network:
+    driver: bridge
+
+volumes:
+  db_data:
